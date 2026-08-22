@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server";
+export async function POST(request:Request){let body:{usuario?:string;senha?:string}={};try{body=await request.json()}catch{return NextResponse.json({ok:false},{status:400})}const ok=body.usuario===(process.env.DASHBOARD_USER||"Administrador")&&body.senha===process.env.DASHBOARD_PASSWORD;if(!ok)return NextResponse.json({ok:false},{status:401});const r=NextResponse.json({ok:true});r.cookies.set("painel_session",process.env.SESSION_TOKEN||"",{httpOnly:true,secure:true,sameSite:"strict",maxAge:28800,path:"/"});return r;}
