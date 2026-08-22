@@ -1,0 +1,25 @@
+{
+  "name": "Painel Comitê Sérgio Aguiar",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Painel de Planilhas",
+      "onAutoForward": "openBrowser",
+      "visibility": "private"
+    }
+  },
+  "containerEnv": {
+    "DASHBOARD_USER": "Administrador",
+    "GOOGLE_SHEET_ID": "1jabSU0G5IYoKP6raGtZszQuV8Ti92MJu9E44zkOWrCc"
+  },
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm run dev",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}
