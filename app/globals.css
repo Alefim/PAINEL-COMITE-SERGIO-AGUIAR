@@ -17,3 +17,5 @@
 .mini-crest{background:#fff;color:var(--red);box-shadow:inset 0 -4px 0 var(--yellow)}.top-title span{color:#ffe8ea}
 .bar{background:linear-gradient(90deg,var(--red),#f05c67)}
 .candidate-fill{background:var(--blue)}.candidate-row:nth-child(1) .candidate-fill{background:var(--red)}.candidate-row:nth-child(2) .candidate-fill{background:var(--yellow)}.candidate-row:nth-child(3) .candidate-fill{background:var(--green)}.candidate-row:nth-child(4) .candidate-fill{background:var(--blue)}
+.filters{grid-template-columns:1.05fr 1.05fr 1.25fr auto auto}.report-button{align-self:end;height:42px;border:0;border-radius:10px;background:var(--red);color:#fff;padding:0 15px;font-size:13px;font-weight:800;white-space:nowrap;box-shadow:0 7px 18px rgba(229,27,42,.16)}.report-button:hover{background:#c91422;transform:translateY(-1px)}.report-button:disabled{opacity:.55;cursor:not-allowed;transform:none}
+@media(max-width:1100px){.filters{grid-template-columns:1fr 1fr 1fr}.report-button,.refresh-button{width:100%}}
