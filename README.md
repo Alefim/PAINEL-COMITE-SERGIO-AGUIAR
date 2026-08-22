@@ -53,6 +53,21 @@ npm run dev
 
 O endereço local será mostrado no terminal.
 
+## Executar dentro do GitHub Codespaces
+
+1. Abra o repositório no GitHub.
+2. Clique em **Code → Codespaces → Create codespace on main**.
+3. Aguarde a instalação automática das dependências.
+4. No terminal do Codespaces, execute `npm run dev`.
+5. Quando a porta 5173 aparecer, clique em **Open in Browser**.
+
+Antes de criar o Codespace, cadastre estes segredos em **Settings → Secrets and variables → Codespaces**:
+
+- `DASHBOARD_PASSWORD` — senha do painel;
+- `SESSION_TOKEN` — uma sequência aleatória longa.
+
+O usuário `Administrador` e o identificador da planilha já são configurados automaticamente no ambiente do Codespaces.
+
 ## Variáveis de ambiente
 
 | Variável | Finalidade |
