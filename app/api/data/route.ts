@@ -5,7 +5,7 @@ export async function GET(){
   const jar=await cookies();
   const token=process.env.SESSION_TOKEN||"painel-comite-sergio-aguiar-2026";
   if(jar.get("painel_session")?.value!==token)return NextResponse.json({erro:"Não autorizado"},{status:401});
-  const id=process.env.GOOGLE_SHEET_ID?.trim()||"1flygUldKpGBRS0pOZxJdk2HGQRiXeBDbKj2LmJlJxkM";
+  const id="1flygUldKpGBRS0pOZxJdk2HGQRiXeBDbKj2LmJlJxkM";
   try{
     const [summary,bairroSheet]=await Promise.all([
       fetchSheet(id,"RESUMO POR RUA","A:AA"),
