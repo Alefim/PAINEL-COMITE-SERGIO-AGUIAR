@@ -9,7 +9,7 @@ const fmt=new Intl.NumberFormat("pt-BR");
 export default function Home(){
  const[mode,setMode]=useState<"interno"|"tse">("interno"),[city,setCity]=useState("Todos os municípios"),[query,setQuery]=useState(""),[data,setData]=useState<Payload>(initial),[loading,setLoading]=useState(false);
  async function refresh(){setLoading(true);try{const r=await fetch(mode==="interno"?"/api/dashboard":"/api/tse",{cache:"no-store"});setData(await r.json())}finally{setLoading(false)}}
- useEffect(()=>{void refresh();const id=setInterval(refresh,60000);return()=>clearInterval(id)},[mode]);
+ useEffect(()=>{void refresh();const id=setInterval(refresh,5000);return()=>clearInterval(id)},[mode]);
  const cities=useMemo(()=>["Todos os municípios",...Array.from(new Set(data.rows.map(r=>r.municipality))).sort()], [data.rows]);
  const rows=useMemo(()=>data.rows.filter(r=>(city==="Todos os municípios"||r.municipality===city)&&(`${r.section} ${r.location}`).toLowerCase().includes(query.toLowerCase())),[data.rows,city,query]);
  const votes=rows.reduce((s,r)=>s+r.votes,0),federalVotes=rows.reduce((s,r)=>s+(r.federalVotes||0),0),eligible=rows.reduce((s,r)=>s+r.eligible,0),sections=rows.filter(r=>r.checked||r.votes>0||(r.federalVotes||0)>0).length,totalSections=Math.max(rows.length,1),progress=Math.min(100,sections/totalSections*100);
