@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import {BarChart3,CheckCircle2,Clock3,Database,MapPin,RefreshCw,Search,ShieldCheck,Vote} from "lucide-react";
 import CearaMap from "@/components/CearaMap";
-type Row={section:string;location:string;municipality:string;votes:number;federalVotes?:number;eligible:number;ibgeCode?:string};
+type Row={section:string;location:string;municipality:string;votes:number;federalVotes?:number;checked?:boolean;eligible:number;ibgeCode?:string};
 type Payload={rows:Row[];updatedAt:string;source:"sheet"|"demo";message?:string;federalCandidate?:string};
 const initial:Payload={rows:[],updatedAt:new Date().toISOString(),source:"demo"};
 const fmt=new Intl.NumberFormat("pt-BR");
@@ -12,7 +12,7 @@ export default function Home(){
  useEffect(()=>{void refresh();const id=setInterval(refresh,60000);return()=>clearInterval(id)},[mode]);
  const cities=useMemo(()=>["Todos os municípios",...Array.from(new Set(data.rows.map(r=>r.municipality))).sort()], [data.rows]);
  const rows=useMemo(()=>data.rows.filter(r=>(city==="Todos os municípios"||r.municipality===city)&&(`${r.section} ${r.location}`).toLowerCase().includes(query.toLowerCase())),[data.rows,city,query]);
- const votes=rows.reduce((s,r)=>s+r.votes,0),federalVotes=rows.reduce((s,r)=>s+(r.federalVotes||0),0),eligible=rows.reduce((s,r)=>s+r.eligible,0),sections=rows.filter(r=>r.votes>0).length,totalSections=mode==="interno"?161:Math.max(data.rows.length,1),progress=Math.min(100,sections/totalSections*100);
+ const votes=rows.reduce((s,r)=>s+r.votes,0),federalVotes=rows.reduce((s,r)=>s+(r.federalVotes||0),0),eligible=rows.reduce((s,r)=>s+r.eligible,0),sections=rows.filter(r=>r.checked||r.votes>0||(r.federalVotes||0)>0).length,totalSections=Math.max(rows.length,1),progress=Math.min(100,sections/totalSections*100);
  const previousElection=18738,achievement=Math.min(100,votes/previousElection*100),difference=votes-previousElection,projectedVotes=progress>0?Math.round(votes/(progress/100)):0;
  const ranking=Object.entries(rows.reduce<Record<string,number>>((a,r)=>{a[r.location]=(a[r.location]||0)+r.votes;return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
  return <main className="app-shell">
