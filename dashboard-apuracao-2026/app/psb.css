@@ -7,3 +7,4 @@
 .summary>.projection-card{margin:0 0 18px}.summary>.federal-card{margin:0 0 22px}.summary>.candidate{margin-top:2px}
 .summary>.metrics{margin:12px 0 0}.summary>.updated{margin:16px 0 24px}.summary>.candidate{margin-top:0;padding-top:22px;border-top:1px solid var(--line)}
 .summary>.candidate{width:100%;justify-content:center;text-align:left}.summary>.total{width:100%;text-align:center}.summary>.progress-label,.summary>.progress,.summary>.progress+small{width:min(100%,720px);margin-left:auto;margin-right:auto}.summary>.progress+small{display:block;text-align:center}@media(max-width:480px){.summary>.candidate{justify-content:center!important;text-align:left}.summary>.candidate>div{min-width:0}.summary>.progress-label{gap:12px;font-size:13px}}
+.summary>.candidate{padding-top:0;border-top:0}.summary>.projection-card{margin:22px 0 18px}.summary>.federal-card{margin:0 0 16px}.summary>.metrics{margin:0}.summary>.updated{margin:16px 0 0}
