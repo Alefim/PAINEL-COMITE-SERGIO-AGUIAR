@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
+    "lucide-react": "^0.468.0",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6"
@@ -39,5 +40,5 @@
     "wrangler": "4.92.0"
   },
   "type": "module",
-  "displayName": "Painel de Planilhas - Comit\u00ea S\u00e9rgio Aguiar"
+  "displayName": "Painel de Planilhas - Comitê Sérgio Aguiar"
 }
