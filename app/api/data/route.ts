@@ -16,14 +16,23 @@ export async function GET(){
     const bairroHeaders=bairroSheet[0]||[];
     const visitas=bairroSheet.slice(1).filter(r=>r[0]&&normalize(r[0])!=="TOTAL GERAL").map(r=>Object.fromEntries(bairroHeaders.map((h,i)=>[h,i===0?r[i]:number(r[i])])));
     const areaSheets=visitas.map(r=>String(r["BAIRRO/ÁREA"]||"")).filter(Boolean);
-    const areaData=await Promise.all(areaSheets.map(async bairro=>({bairro,data:await fetchSheet(id,bairro,"A:AZ")})));
+
+    // As abas territoriais possuem blocos separados por linhas vazias.
+    // A consulta explícita garante que 1ª visita, 2ª visita e visita extra
+    // sejam lidas mesmo quando existem espaços em branco entre os blocos.
+    const areaData=await Promise.all(areaSheets.map(async bairro=>({
+      bairro,
+      data:await fetchSheet(id,bairro,"A1:AZ1000","select * where A is not null")
+    })));
+
     const visitaRows=areaData.flatMap(({bairro,data})=>extractVisitRows(bairro,data));
     return NextResponse.json({rows,visitas,visitaRows,totalRuas:rows.length,totalBairros:visitas.length,atualizadoEm:new Date().toISOString()},{headers:{"cache-control":"no-store"}});
   }catch(e){return NextResponse.json({erro:e instanceof Error?e.message:"Falha ao ler dados"},{status:502})}
 }
 
-async function fetchSheet(id:string,sheet:string,range:string){
+async function fetchSheet(id:string,sheet:string,range:string,query=""){
   const params=new URLSearchParams({tqx:"out:csv",sheet,range,headers:"1"});
+  if(query)params.set("tq",query);
   const url=`https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?${params}`;
   const response=await fetch(url,{cache:"no-store"});
   if(!response.ok)throw new Error("Acesso à planilha indisponível");
@@ -31,6 +40,7 @@ async function fetchSheet(id:string,sheet:string,range:string){
 }
 
 function normalize(value:string){return String(value||"").trim().toLocaleUpperCase("pt-BR")}
+function markerKey(value:string){return normalize(value).replace(/[ªº]/g,"A").replace(/\s+/g," ")}
 function number(value:string|undefined){const normalized=String(value||"0").replace(/\./g,"").replace(",",".").replace(/[^0-9.-]/g,"");return Number(normalized)||0}
 function parseCsv(text:string){const rows:string[][]=[];let row:string[]=[];let field="";let quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++}else quoted=!quoted}else if(c===","&&!quoted){row.push(field);field=""}else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&text[i+1]==="\n")i++;row.push(field);if(row.some(Boolean))rows.push(row);row=[];field=""}else field+=c}row.push(field);if(row.some(Boolean))rows.push(row);return rows}
 
@@ -39,9 +49,9 @@ function extractVisitRows(bairro:string,data:string[][]){
   let visita="";
   let columns:Record<number,string>={};
   for(let i=0;i<data.length;i++){
-    const marker=normalize(data[i]?.[0]||"");
-    if(marker.includes("1ª VISITA")){visita="1ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
-    if(marker.includes("2ª VISITA")){visita="2ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
+    const marker=markerKey(data[i]?.[0]||"");
+    if(marker.includes("1A VISITA")){visita="1ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
+    if(marker.includes("2A VISITA")){visita="2ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
     if(marker.includes("VISITA EXTRA")){visita="Visita extra";columns=visitColumns(data[i],data[i+1]||[]);continue}
     if(!visita||marker==="RUA/LOCALIDADE"||marker==="TOTAL"||!data[i]?.[0])continue;
     const row=data[i];
