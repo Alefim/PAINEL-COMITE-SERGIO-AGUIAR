@@ -8,7 +8,7 @@ export async function GET(){
   const id="1flygUldKpGBRS0pOZxJdk2HGQRiXeBDbKj2LmJlJxkM";
   try{
     const [summary,bairroSheet]=await Promise.all([
-      fetchSheet(id,"RESUMO POR RUA","A:AA"),
+      fetchSheet(id,"RESUMO POR RUA","A:AG"),
       fetchSheet(id,"RESUMO POR BAIRRO","A:AF"),
     ]);
     const headers=summary[0]||[];
