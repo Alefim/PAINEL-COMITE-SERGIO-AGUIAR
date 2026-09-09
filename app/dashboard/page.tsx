@@ -100,31 +100,6 @@ export default function Dashboard() {
     visita === "Todas as visitas" || r.VISITA === visita
   ), [registrosTerritoriais, visita]);
 
-  const registrosPorVisita = useMemo(() => visitaRows.filter(r =>
-    visita === "Todas as visitas" || r.VISITA === visita
-  ), [visitaRows, visita]);
-
-  const bairrosMaisVotados = useMemo(() => Object.entries(camposPorCargo).flatMap(([cargoNome, campos]) =>
-    campos.map(nome => {
-      const mapa = new Map<string, number>();
-      registrosPorVisita.forEach(r => {
-        const nomeBairro = String(r["BAIRRO/ÁREA"] || "");
-        if (!nomeBairro) return;
-        mapa.set(nomeBairro, (mapa.get(nomeBairro) || 0) + Number(r[nome] || 0));
-      });
-      const lider = Array.from(mapa.entries()).sort((a, b) => b[1] - a[1])[0];
-      const temVotos = !!lider && lider[1] > 0;
-      return {
-        cargo: cargoNome as Cargo,
-        nome,
-        bairro: temVotos ? lider[0] : "Sem dados",
-        votos: temVotos ? lider[1] : 0,
-      };
-    })
-  ), [registrosPorVisita]);
-
-  const bairroMaisVotadoSelecionado = bairrosMaisVotados.find(x => x.cargo === cargo && x.nome === candidato);
-
   const ranking = useMemo(() => {
     const mapa = new Map<string, { bairro: string; rua: string; votos: number }>();
     registrosFiltrados.forEach(r => {
@@ -145,6 +120,9 @@ export default function Dashboard() {
   })).sort((a, b) => b.total - a.total), [opcoesCandidato, registrosFiltrados]);
 
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
+  const casasFechadas = registrosFiltrados.reduce((s, r) => s + Number(r["CASAS FECHADAS"] || 0), 0);
+  const casasDesabitadas = registrosFiltrados.reduce((s, r) => s + Number(r["CASAS DESABITADAS"] || 0), 0);
+  const casasVisitadas = casasFechadas + casasDesabitadas;
   const ruasCadastradas = new Set(registrosFiltrados.map(chaveRuaVisita)).size;
 
   const ruasComVoto = new Set(
@@ -222,7 +200,7 @@ export default function Dashboard() {
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
           {visita !== "Todas as visitas" ? <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article> : null}
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
-          <article className="metric-card"><span className="metric-label">Bairro mais votado</span><strong className="metric-value metric-text">{bairroMaisVotadoSelecionado?.bairro || "Sem dados"}</strong><div className="metric-detail">{(bairroMaisVotadoSelecionado?.votos || 0).toLocaleString("pt-BR")} votos • {candidato}</div></article>
+          <article className="metric-card"><span className="metric-label">Casas visitadas</span><strong className="metric-value">{casasVisitadas.toLocaleString("pt-BR")}</strong><div className="metric-detail">{casasFechadas.toLocaleString("pt-BR")} fechadas • {casasDesabitadas.toLocaleString("pt-BR")} desabitadas</div></article>
         </section>
 
         <section className="panel visit-comparison">
