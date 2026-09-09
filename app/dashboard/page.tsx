@@ -98,10 +98,6 @@ export default function Dashboard() {
     bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro
   ), [resumoRows, bairro]);
 
-  // A 1ª visita é usada como cadastro territorial principal porque é nela que
-  // as novas ruas/localidades estão sendo acrescentadas nas abas dos bairros.
-  // Assim o total do painel acompanha as abas territoriais, e não apenas o
-  // RESUMO POR RUA, que pode ficar defasado quando novas linhas são incluídas.
   const cadastroTerritorialFiltrado = useMemo(() => visitaRows.filter(r =>
     r.VISITA === "1ª visita" &&
     (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
@@ -154,7 +150,6 @@ export default function Dashboard() {
 
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-
   const ruasCadastradas = new Set(cadastroTerritorialFiltrado.map(chaveRua)).size;
 
   const ruasNoResumo = new Set(
@@ -253,22 +248,6 @@ export default function Dashboard() {
           <div className="visit-table">
             <div className="visit-table-head"><span>Indicador</span><span>1ª visita</span><span>2ª visita</span><span>Visita extra</span></div>
             {compararCasas.map(x => <div className="visit-table-row" key={x.nome}><strong>{x.nome}</strong>{visitasComparacao.map(v => <span key={v}>{Number(x.valores[v] || 0).toLocaleString("pt-BR")}</span>)}</div>)}
-          </div>
-        </section>
-
-        <section className="panel top-neighborhood-panel">
-          <div className="panel-head"><div><h2>Bairro mais votado por candidato/categoria</h2><div className="panel-kicker">{visita} • comparação entre todos os bairros da planilha</div></div></div>
-          <div className="top-neighborhood-groups">
-            {(Object.keys(camposPorCargo) as Cargo[]).map(cargoNome => <div className="top-neighborhood-group" key={cargoNome}>
-              <h3>{cargoNome}</h3>
-              <div className="top-neighborhood-list">
-                {bairrosMaisVotados.filter(x => x.cargo === cargoNome).map(x => <div className="top-neighborhood-row" key={`${x.cargo}-${x.nome}`}>
-                  <span className="top-field">{x.nome}</span>
-                  <strong title={x.bairro}>{x.bairro}</strong>
-                  <span className="top-votes">{x.votos.toLocaleString("pt-BR")} votos</span>
-                </div>)}
-              </div>
-            </div>)}
           </div>
         </section>
 
