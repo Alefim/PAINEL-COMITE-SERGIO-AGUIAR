@@ -98,6 +98,7 @@ function visitColumns(groups:string[],headers:string[]){
     const header=normalize(headers[i]);
     if(!header)continue;
     let name=header;
+    if(header==="VISITADAS")name="CASAS VISITADAS";
     if(header.startsWith("OUTR"))name=group.includes("ESTADUAL")?"OUTROS EST.":group.includes("FEDERAL")?"OUTROS FED.":group.includes("SENADOR")?"OUTROS SEN.":group.includes("GOVERNADOR")?"OUTROS GOV.":"OUTROS PRES.";
     if(header.startsWith("IND"))name=group.includes("ESTADUAL")?"INDECISOS EST.":group.includes("FEDERAL")?"INDECISOS FED.":group.includes("SENADOR")?"INDECISOS SEN.":group.includes("GOVERNADOR")?"INDECISOS GOV.":"INDECISOS PRES.";
     if(header==="OBSERVAÇÕES"||header==="OBSERVACOES")name="OBSERVAÇÕES";
