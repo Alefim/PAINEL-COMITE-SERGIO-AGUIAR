@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, string | number>;
 type Cargo = keyof typeof camposPorCargo;
-type VisitaNome = (typeof visitasComparacao)[number];
 
 const camposPorCargo = {
   "Deputado Estadual": ["SÉRGIO", "ROMEU", "EUVALDETE", "OUTROS EST.", "INDECISOS EST."],
@@ -37,6 +36,10 @@ function normalizarChave(value: unknown) {
 
 function chaveRua(row: Row) {
   return `${normalizarChave(row["BAIRRO/ÁREA"])}|||${normalizarChave(row["RUA/LOCALIDADE"])}`;
+}
+
+function chaveRuaVisita(row: Row) {
+  return `${chaveRua(row)}|||${normalizarChave(row.VISITA)}`;
 }
 
 export default function Dashboard() {
@@ -101,38 +104,6 @@ export default function Dashboard() {
     visita === "Todas as visitas" || r.VISITA === visita
   ), [visitaRows, visita]);
 
-  const conferenciaRuas = useMemo(() => {
-    const porVisita = Object.fromEntries(visitasComparacao.map(v => [v, new Set<string>()])) as Record<VisitaNome, Set<string>>;
-    const detalhes = new Map<string, { bairro: string; rua: string; visitas: Set<string> }>();
-
-    registrosTerritoriais.forEach(r => {
-      const nomeVisita = String(r.VISITA || "") as VisitaNome;
-      if (!visitasComparacao.includes(nomeVisita)) return;
-      const key = chaveRua(r);
-      porVisita[nomeVisita].add(key);
-      const atual = detalhes.get(key) || {
-        bairro: String(r["BAIRRO/ÁREA"] || ""),
-        rua: String(r["RUA/LOCALIDADE"] || ""),
-        visitas: new Set<string>(),
-      };
-      atual.visitas.add(nomeVisita);
-      detalhes.set(key, atual);
-    });
-
-    const todos = Array.from(detalhes.entries()).map(([key, item]) => ({ key, ...item }));
-    const sincronizadas = todos.filter(x => visitasComparacao.every(v => x.visitas.has(v)));
-    const divergencias = todos
-      .filter(x => !visitasComparacao.every(v => x.visitas.has(v)))
-      .sort((a, b) => a.bairro.localeCompare(b.bairro, "pt-BR") || a.rua.localeCompare(b.rua, "pt-BR"));
-
-    return {
-      total: detalhes.size,
-      sincronizadas: sincronizadas.length,
-      divergencias,
-      contagem: Object.fromEntries(visitasComparacao.map(v => [v, porVisita[v].size])) as Record<VisitaNome, number>,
-    };
-  }, [registrosTerritoriais]);
-
   const bairrosMaisVotados = useMemo(() => Object.entries(camposPorCargo).flatMap(([cargoNome, campos]) =>
     campos.map(nome => {
       const mapa = new Map<string, number>();
@@ -175,14 +146,15 @@ export default function Dashboard() {
 
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-  const ruasCadastradas = visita === "Todas as visitas"
-    ? conferenciaRuas.total
-    : conferenciaRuas.contagem[visita as VisitaNome] || 0;
+
+  // Cada rua é contada dentro da visita em que foi cadastrada.
+  // Assim, a mesma rua na 1ª, 2ª e Extra representa três registros no filtro "Todas as visitas".
+  const ruasCadastradas = new Set(registrosFiltrados.map(chaveRuaVisita)).size;
 
   const ruasComVoto = new Set(
     registrosFiltrados
       .filter(r => Number(r[candidato] || 0) > 0)
-      .map(chaveRua)
+      .map(chaveRuaVisita)
   ).size;
 
   const ruasSemVoto = Math.max(0, ruasCadastradas - ruasComVoto);
@@ -253,7 +225,7 @@ export default function Dashboard() {
         <section className="metrics">
           <article className="metric-card"><span className="metric-label">Votos no cargo</span><strong className="metric-value">{votos.toLocaleString("pt-BR")}</strong><div className="metric-detail">{cargo} • {visita}</div></article>
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
-          <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong><div className="metric-detail">1ª: {conferenciaRuas.contagem["1ª visita"]} • 2ª: {conferenciaRuas.contagem["2ª visita"]} • Extra: {conferenciaRuas.contagem["Visita extra"]}</div></article>
+          <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article>
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
           <article className="metric-card"><span className="metric-label">Bairro mais votado</span><strong className="metric-value metric-text">{bairroMaisVotadoSelecionado?.bairro || "Sem dados"}</strong><div className="metric-detail">{(bairroMaisVotadoSelecionado?.votos || 0).toLocaleString("pt-BR")} votos • {candidato}</div></article>
         </section>
