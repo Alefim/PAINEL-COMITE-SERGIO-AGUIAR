@@ -144,9 +144,7 @@ export default function Dashboard() {
     total: registrosFiltrados.reduce((s, r) => s + Number(r[nome] || 0), 0),
   })).sort((a, b) => b.total - a.total), [opcoesCandidato, registrosFiltrados]);
 
-  const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-
   const ruasCadastradas = new Set(registrosFiltrados.map(chaveRuaVisita)).size;
 
   const ruasComVoto = new Set(
@@ -174,8 +172,8 @@ export default function Dashboard() {
     nome: v,
     total: visitaRows
       .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
-      .reduce((s, r) => s + candidatosDoCargo(cargo).reduce((sub, nome) => sub + Number(r[nome] || 0), 0), 0),
-  })), [visitaRows, bairro, cargo]);
+      .reduce((s, r) => s + Number(r[candidato] || 0), 0),
+  })), [visitaRows, bairro, candidato]);
 
   async function sair() {
     await fetch("/api/logout", { method: "POST" });
@@ -221,7 +219,6 @@ export default function Dashboard() {
 
       {erro ? <div className="error-state">{erro}. Verifique se a planilha está compartilhada para leitura por link.</div> : <>
         <section className="metrics">
-          <article className="metric-card"><span className="metric-label">Votos no cargo</span><strong className="metric-value">{votos.toLocaleString("pt-BR")}</strong><div className="metric-detail">{cargo} • {visita}</div></article>
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
           {visita !== "Todas as visitas" ? <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article> : null}
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
@@ -229,7 +226,7 @@ export default function Dashboard() {
         </section>
 
         <section className="panel visit-comparison">
-          <div className="panel-head"><div><h2>Comparativo por visita</h2><div className="panel-kicker">Novas ruas entram automaticamente na visita em que forem inseridas na planilha.</div></div></div>
+          <div className="panel-head"><div><h2>Votos da seleção por visita</h2><div className="panel-kicker">Exibindo os votos de {candidato} em cada visita.</div></div></div>
           <div className="visit-summary">
             {votosPorVisita.map(x => <div key={x.nome}><span>{x.nome.toUpperCase()}</span><strong>{x.total.toLocaleString("pt-BR")}</strong></div>)}
           </div>
