@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, string | number>;
 type Cargo = keyof typeof camposPorCargo;
+type VisitaNome = (typeof visitasComparacao)[number];
 
 const camposPorCargo = {
   "Deputado Estadual": ["SÉRGIO", "ROMEU", "EUVALDETE", "OUTROS EST.", "INDECISOS EST."],
@@ -40,11 +41,10 @@ function chaveRua(row: Row) {
 
 export default function Dashboard() {
   const [visitaRows, setVisitaRows] = useState<Row[]>([]);
-  const [resumoRows, setResumoRows] = useState<Row[]>([]);
   const [cargo, setCargo] = useState<Cargo>("Deputado Estadual");
   const [candidato, setCandidato] = useState("SÉRGIO");
   const [bairro, setBairro] = useState("Todos os bairros");
-  const [visita, setVisita] = useState("Todas as visitas");
+  const [visita, setVisita] = useState<(typeof visitasDisponiveis)[number]>("Todas as visitas");
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState("");
   const [updated, setUpdated] = useState("");
@@ -62,7 +62,6 @@ export default function Dashboard() {
       if (!response.ok) setErro(json.erro || "Não foi possível atualizar os dados.");
       else {
         setVisitaRows(json.visitaRows || []);
-        setResumoRows(json.rows || []);
         setUpdated(json.atualizadoEm || "");
       }
     } catch {
@@ -89,24 +88,50 @@ export default function Dashboard() {
     ...Array.from(new Set(visitaRows.map(r => String(r["BAIRRO/ÁREA"] || "")).filter(Boolean))).sort(),
   ], [visitaRows]);
 
-  const registrosFiltrados = useMemo(() => visitaRows.filter(r =>
-    (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
-    (visita === "Todas as visitas" || r.VISITA === visita)
-  ), [visitaRows, bairro, visita]);
-
-  const resumoFiltrado = useMemo(() => resumoRows.filter(r =>
-    bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro
-  ), [resumoRows, bairro]);
-
-  const cadastroTerritorialFiltrado = useMemo(() => visitaRows.filter(r =>
-    r.VISITA === "1ª visita" &&
+  const registrosTerritoriais = useMemo(() => visitaRows.filter(r =>
     (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
     String(r["RUA/LOCALIDADE"] || "").trim()
   ), [visitaRows, bairro]);
 
+  const registrosFiltrados = useMemo(() => registrosTerritoriais.filter(r =>
+    visita === "Todas as visitas" || r.VISITA === visita
+  ), [registrosTerritoriais, visita]);
+
   const registrosPorVisita = useMemo(() => visitaRows.filter(r =>
     visita === "Todas as visitas" || r.VISITA === visita
   ), [visitaRows, visita]);
+
+  const conferenciaRuas = useMemo(() => {
+    const porVisita = Object.fromEntries(visitasComparacao.map(v => [v, new Set<string>()])) as Record<VisitaNome, Set<string>>;
+    const detalhes = new Map<string, { bairro: string; rua: string; visitas: Set<string> }>();
+
+    registrosTerritoriais.forEach(r => {
+      const nomeVisita = String(r.VISITA || "") as VisitaNome;
+      if (!visitasComparacao.includes(nomeVisita)) return;
+      const key = chaveRua(r);
+      porVisita[nomeVisita].add(key);
+      const atual = detalhes.get(key) || {
+        bairro: String(r["BAIRRO/ÁREA"] || ""),
+        rua: String(r["RUA/LOCALIDADE"] || ""),
+        visitas: new Set<string>(),
+      };
+      atual.visitas.add(nomeVisita);
+      detalhes.set(key, atual);
+    });
+
+    const todos = Array.from(detalhes.entries()).map(([key, item]) => ({ key, ...item }));
+    const sincronizadas = todos.filter(x => visitasComparacao.every(v => x.visitas.has(v)));
+    const divergencias = todos
+      .filter(x => !visitasComparacao.every(v => x.visitas.has(v)))
+      .sort((a, b) => a.bairro.localeCompare(b.bairro, "pt-BR") || a.rua.localeCompare(b.rua, "pt-BR"));
+
+    return {
+      total: detalhes.size,
+      sincronizadas: sincronizadas.length,
+      divergencias,
+      contagem: Object.fromEntries(visitasComparacao.map(v => [v, porVisita[v].size])) as Record<VisitaNome, number>,
+    };
+  }, [registrosTerritoriais]);
 
   const bairrosMaisVotados = useMemo(() => Object.entries(camposPorCargo).flatMap(([cargoNome, campos]) =>
     campos.map(nome => {
@@ -150,36 +175,33 @@ export default function Dashboard() {
 
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-  const ruasCadastradas = new Set(cadastroTerritorialFiltrado.map(chaveRua)).size;
-
-  const ruasNoResumo = new Set(
-    resumoFiltrado
-      .filter(r => String(r["RUA/LOCALIDADE"] || "").trim())
-      .map(chaveRua)
-  ).size;
+  const ruasCadastradas = visita === "Todas as visitas"
+    ? conferenciaRuas.total
+    : conferenciaRuas.contagem[visita as VisitaNome] || 0;
 
   const ruasComVoto = new Set(
     registrosFiltrados
-      .filter(r => String(r["RUA/LOCALIDADE"] || "").trim() && Number(r[candidato] || 0) > 0)
+      .filter(r => Number(r[candidato] || 0) > 0)
       .map(chaveRua)
   ).size;
 
-  const registrosCadastrados = cadastroTerritorialFiltrado.length;
-  const diferencaRuas = ruasCadastradas - ruasNoResumo;
   const ruasSemVoto = Math.max(0, ruasCadastradas - ruasComVoto);
   const top = ranking[0];
   const maxRanking = Math.max(1, ...ranking.map(x => x.votos));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
 
   const compararCasas = useMemo(() => [
-    { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
-    { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
-  ].map(item => ({
-    nome: item.nome,
-    valores: Object.fromEntries(visitasComparacao.map(v => [v, visitaRows
-      .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
-      .reduce((s, r) => s + Number(r[item.campo] || 0), 0)])),
-  })), [visitaRows, bairro]);
+    { nome: "Ruas cadastradas", valores: Object.fromEntries(visitasComparacao.map(v => [v, conferenciaRuas.contagem[v]])) },
+    ...[
+      { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
+      { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
+    ].map(item => ({
+      nome: item.nome,
+      valores: Object.fromEntries(visitasComparacao.map(v => [v, visitaRows
+        .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
+        .reduce((s, r) => s + Number(r[item.campo] || 0), 0)])),
+    })),
+  ], [visitaRows, bairro, conferenciaRuas]);
 
   const votosPorVisita = useMemo(() => visitasComparacao.map(v => ({
     nome: v,
@@ -204,8 +226,9 @@ export default function Dashboard() {
     const linhasRanking = ranking.length ? ranking.map((x, i) => `<tr><td>${i + 1}</td><td>${safe(x.rua)}</td><td>${safe(x.bairro)}</td><td class="n">${x.votos.toLocaleString("pt-BR")}</td></tr>`).join("") : `<tr><td colspan="4">Sem votos lançados para o filtro selecionado.</td></tr>`;
     const linhasCandidatos = totais.map(x => `<tr><td>${safe(x.nome)}</td><td class="n">${x.total.toLocaleString("pt-BR")}</td></tr>`).join("");
     const linhasCasas = compararCasas.map(x => `<tr><td>${safe(x.nome)}</td>${visitasComparacao.map(v => `<td class="n">${Number(x.valores[v] || 0).toLocaleString("pt-BR")}</td>`).join("")}</tr>`).join("");
+    const linhasDivergencias = conferenciaRuas.divergencias.slice(0, 50).map(x => `<tr><td>${safe(x.rua)}</td><td>${safe(x.bairro)}</td>${visitasComparacao.map(v => `<td class="n">${x.visitas.has(v) ? "OK" : "—"}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="5">As três visitas estão com a mesma relação de ruas.</td></tr>`;
 
-    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><div class="f" style="margin-bottom:20px;max-width:320px"><span>VOTOS DA SELEÇÃO</span><strong style="display:block;font-size:30px;color:#143968;margin:5px 0">${totalCandidato.toLocaleString("pt-BR")}</strong><b>${safe(candidato)}</b></div><h2>Casas por visita</h2><table><thead><tr><th>Indicador</th><th class="n">1ª visita</th><th class="n">2ª visita</th><th class="n">Visita extra</th></tr></thead><tbody>${linhasCasas}</tbody></table><div class="grid"><div><h2>Ranking de ruas — ${safe(candidato)}</h2><p>Amostra: top ${ranking.length} ruas com maior votação no filtro atual.</p><table><thead><tr><th>#</th><th>Rua/Localidade</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasRanking}</tbody></table></div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
+    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><div class="f" style="margin-bottom:20px;max-width:320px"><span>VOTOS DA SELEÇÃO</span><strong style="display:block;font-size:30px;color:#143968;margin:5px 0">${totalCandidato.toLocaleString("pt-BR")}</strong><b>${safe(candidato)}</b></div><h2>Conferência das visitas</h2><table><thead><tr><th>Indicador</th><th class="n">1ª visita</th><th class="n">2ª visita</th><th class="n">Visita extra</th></tr></thead><tbody>${linhasCasas}</tbody></table><h2>Divergências de ruas (${conferenciaRuas.divergencias.length})</h2><table><thead><tr><th>Rua/Localidade</th><th>Bairro/Área</th><th class="n">1ª</th><th class="n">2ª</th><th class="n">Extra</th></tr></thead><tbody>${linhasDivergencias}</tbody></table><div class="grid"><div><h2>Ranking de ruas — ${safe(candidato)}</h2><p>Amostra: top ${ranking.length} ruas com maior votação no filtro atual.</p><table><thead><tr><th>#</th><th>Rua/Localidade</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasRanking}</tbody></table></div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
     janela.document.close();
   }
 
@@ -222,7 +245,7 @@ export default function Dashboard() {
       </div>
 
       <section className="filters">
-        <label>VISITA<select value={visita} onChange={e => setVisita(e.target.value)}>{visitasDisponiveis.map(x => <option key={x}>{x}</option>)}</select></label>
+        <label>VISITA<select value={visita} onChange={e => setVisita(e.target.value as (typeof visitasDisponiveis)[number])}>{visitasDisponiveis.map(x => <option key={x}>{x}</option>)}</select></label>
         <label>CARGO<select value={cargo} onChange={e => setCargo(e.target.value as Cargo)}>{Object.keys(camposPorCargo).map(x => <option key={x}>{x}</option>)}</select></label>
         <label>CANDIDATO / CATEGORIA<select value={candidato} onChange={e => setCandidato(e.target.value)}>{opcoesCandidato.map(x => <option key={x}>{x}</option>)}</select></label>
         <label>BAIRRO / ÁREA<select value={bairro} onChange={e => setBairro(e.target.value)}>{bairros.map(x => <option key={x}>{x}</option>)}</select></label>
@@ -234,13 +257,13 @@ export default function Dashboard() {
         <section className="metrics">
           <article className="metric-card"><span className="metric-label">Votos no cargo</span><strong className="metric-value">{votos.toLocaleString("pt-BR")}</strong><div className="metric-detail">{cargo} • {visita}</div></article>
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
-          <article className="metric-card"><span className="metric-label">Ruas cadastradas</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong><div className="metric-detail">{ruasComVoto.toLocaleString("pt-BR")} com votos • {ruasSemVoto.toLocaleString("pt-BR")} sem votos para {candidato}</div></article>
+          <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong><div className="metric-detail">1ª: {conferenciaRuas.contagem["1ª visita"]} • 2ª: {conferenciaRuas.contagem["2ª visita"]} • Extra: {conferenciaRuas.contagem["Visita extra"]}</div></article>
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
           <article className="metric-card"><span className="metric-label">Bairro mais votado</span><strong className="metric-value metric-text">{bairroMaisVotadoSelecionado?.bairro || "Sem dados"}</strong><div className="metric-detail">{(bairroMaisVotadoSelecionado?.votos || 0).toLocaleString("pt-BR")} votos • {candidato}</div></article>
         </section>
 
         <section className="panel visit-comparison">
-          <div className="panel-head"><div><h2>Comparativo por visita</h2><div className="panel-kicker">1ª visita • 2ª visita • visita extra no mesmo padrão</div></div></div>
+          <div className="panel-head"><div><h2>Comparativo por visita</h2><div className="panel-kicker">Novas ruas entram automaticamente na visita em que forem inseridas na planilha.</div></div></div>
           <div className="visit-summary">
             {votosPorVisita.map(x => <div key={x.nome}><span>{x.nome.toUpperCase()}</span><strong>{x.total.toLocaleString("pt-BR")}</strong></div>)}
           </div>
@@ -250,9 +273,32 @@ export default function Dashboard() {
           </div>
         </section>
 
+        <section className="panel visit-comparison">
+          <div className="panel-head">
+            <div>
+              <h2>Conferência das ruas entre as visitas</h2>
+              <div className="panel-kicker">{bairro} • comparação por bairro + nome da rua, ignorando apenas maiúsculas, acentos e espaços extras</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <strong style={{display:"block", color: conferenciaRuas.divergencias.length ? "#c91422" : "#008546", fontSize:18}}>{conferenciaRuas.divergencias.length}</strong>
+              <span className="panel-kicker">divergências</span>
+            </div>
+          </div>
+          <div className="visit-summary">
+            <div><span>RUAS ÚNICAS</span><strong>{conferenciaRuas.total.toLocaleString("pt-BR")}</strong></div>
+            <div><span>NAS 3 VISITAS</span><strong>{conferenciaRuas.sincronizadas.toLocaleString("pt-BR")}</strong></div>
+            <div><span>DIVERGENTES</span><strong>{conferenciaRuas.divergencias.length.toLocaleString("pt-BR")}</strong></div>
+          </div>
+          <div className="visit-table">
+            <div className="visit-table-head"><span>Rua / localidade</span><span>1ª visita</span><span>2ª visita</span><span>Extra</span></div>
+            {conferenciaRuas.divergencias.length ? conferenciaRuas.divergencias.slice(0, 30).map(x => <div className="visit-table-row" key={x.key} title={x.bairro}><strong>{x.rua}<small style={{display:"block", color:"#98a0ad", fontWeight:400}}>{x.bairro}</small></strong>{visitasComparacao.map(v => <span key={v} style={{color:x.visitas.has(v) ? "#008546" : "#c91422", fontWeight:800}}>{x.visitas.has(v) ? "OK" : "—"}</span>)}</div>) : <div className="empty-state">As relações de ruas da 1ª visita, 2ª visita e visita extra estão de acordo.</div>}
+          </div>
+          {conferenciaRuas.divergencias.length > 30 ? <div className="panel-kicker" style={{marginTop:10}}>Mostrando 30 de {conferenciaRuas.divergencias.length} divergências. O relatório inclui até 50.</div> : null}
+        </section>
+
         <section className="dashboard-grid">
           <article className="panel">
-            <div className="panel-head"><div><h2>Ranking de ruas — {candidato}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">AMOSTRA: exibindo top {ranking.length} ruas • {ruasComVoto.toLocaleString("pt-BR")} ruas com votos no filtro</div></div></div>
+            <div className="panel-head"><div><h2>Ranking de ruas — {candidato}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">AMOSTRA: exibindo top {ranking.length} ruas • {ruasComVoto.toLocaleString("pt-BR")} ruas com votos • {ruasSemVoto.toLocaleString("pt-BR")} sem votos para {candidato}</div></div></div>
             {ranking.length ? <div className="rank-list">{ranking.map((x, i) => <div className="rank-row" key={`${x.bairro}-${x.rua}`}><span className="rank-number">{String(i + 1).padStart(2, "0")}</span><div className="rank-name"><strong>{x.rua}</strong><span>{x.bairro}</span></div><div className="bar-track"><div className="bar" style={{width:`${Math.max(3, x.votos / maxRanking * 100)}%`}} /></div><span className="rank-votes">{x.votos.toLocaleString("pt-BR")}</span></div>)}</div> : <div className="empty-state">Sem votos lançados para o filtro selecionado.</div>}
           </article>
 
@@ -263,7 +309,7 @@ export default function Dashboard() {
         </section>
       </>}
 
-      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
+      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos • conferência de ruas em tempo real.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
     </div>
   </main>;
 }
