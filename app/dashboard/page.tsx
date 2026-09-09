@@ -21,13 +21,8 @@ const coresCandidatos: Record<string, string> = {
   "EUVALDETE": "#0072bc",
 };
 
-function candidatosDoCargo(cargo: Cargo, visita: string) {
-  const base = [...camposPorCargo[cargo]] as string[];
-  if (visita === "1ª visita" || visita === "Todas as visitas") {
-    if (cargo === "Senador") base.splice(3, 0, "ALCIDES");
-    if (cargo === "Governador") base.splice(2, 0, "OUTROS GOV.");
-  }
-  return base;
+function candidatosDoCargo(cargo: Cargo) {
+  return [...camposPorCargo[cargo]] as string[];
 }
 
 export default function Dashboard() {
@@ -64,11 +59,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     carregar();
-    const timer = setInterval(carregar, 60000);
+    const timer = setInterval(carregar, 30000);
     return () => clearInterval(timer);
   }, []);
 
-  const opcoesCandidato = useMemo(() => candidatosDoCargo(cargo, visita), [cargo, visita]);
+  const opcoesCandidato = useMemo(() => candidatosDoCargo(cargo), [cargo]);
 
   useEffect(() => {
     if (!opcoesCandidato.includes(candidato)) setCandidato(opcoesCandidato[0]);
@@ -124,7 +119,7 @@ export default function Dashboard() {
     nome: v,
     total: visitaRows
       .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
-      .reduce((s, r) => s + candidatosDoCargo(cargo, v).reduce((sub, nome) => sub + Number(r[nome] || 0), 0), 0),
+      .reduce((s, r) => s + candidatosDoCargo(cargo).reduce((sub, nome) => sub + Number(r[nome] || 0), 0), 0),
   })), [visitaRows, bairro, cargo]);
 
   async function sair() {
@@ -178,15 +173,14 @@ export default function Dashboard() {
         </section>
 
         <section className="panel visit-comparison">
-          <div className="panel-head"><div><h2>Comparativo por visita</h2><div className="panel-kicker">1ª visita preservada • 2ª visita e visita extra no novo padrão</div></div></div>
+          <div className="panel-head"><div><h2>Comparativo por visita</h2><div className="panel-kicker">1ª visita • 2ª visita • visita extra no mesmo padrão</div></div></div>
           <div className="visit-summary">
-            {votosPorVisita.map((x, i) => <div key={x.nome}><span>{x.nome.toUpperCase()}</span><strong>{x.total.toLocaleString("pt-BR")}</strong>{i === 0 && <small style={{color:"#8a93a1"}}>inclui campos históricos</small>}</div>)}
+            {votosPorVisita.map((x, i) => <div key={x.nome}><span>{x.nome.toUpperCase()}</span><strong>{x.total.toLocaleString("pt-BR")}</strong></div>)}
           </div>
           <div className="visit-table">
             <div className="visit-table-head"><span>Indicador</span><span>1ª visita</span><span>2ª visita</span><span>Visita extra</span></div>
             {compararCasas.map(x => <div className="visit-table-row" key={x.nome}><strong>{x.nome}</strong>{visitasComparacao.map(v => <span key={v}>{Number(x.valores[v] || 0).toLocaleString("pt-BR")}</span>)}</div>)}
           </div>
-          {(visita === "1ª visita" || visita === "Todas as visitas") && <p className="updated" style={{marginTop:12}}>Alcides e “Outros Gov.” permanecem disponíveis somente na 1ª visita, preservando o histórico. Na 2ª visita e na visita extra, o painel segue exatamente os campos do novo formulário.</p>}
         </section>
 
         <section className="dashboard-grid">
@@ -202,7 +196,7 @@ export default function Dashboard() {
         </section>
       </>}
 
-      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 60 segundos.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
+      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
     </div>
   </main>;
 }
