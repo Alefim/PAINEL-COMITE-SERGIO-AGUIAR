@@ -80,7 +80,8 @@ function extractVisitRows(bairro:string,data:string[][]){
     if(marker.includes("1A VISITA")){visita="1ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
     if(marker.includes("2A VISITA")){visita="2ª visita";columns=visitColumns(data[i],data[i+1]||[]);continue}
     if(marker.includes("VISITA EXTRA")){visita="Visita extra";columns=visitColumns(data[i],data[i+1]||[]);continue}
-    if(!visita||marker==="RUA/LOCALIDADE"||marker==="TOTAL"||!data[i]?.[0])continue;
+    if(marker==="TOTAL"){visita="";columns={};continue}
+    if(!visita||marker==="RUA/LOCALIDADE"||!data[i]?.[0])continue;
     const row=data[i];
     const record:Record<string,string|number>={"BAIRRO/ÁREA":bairro,"RUA/LOCALIDADE":row[0],VISITA:visita,"CASAS FECHADAS":number(row[1]),"CASAS DESABITADAS":number(row[2])};
     Object.entries(columns).forEach(([index,name])=>record[name]=number(row[Number(index)]));
