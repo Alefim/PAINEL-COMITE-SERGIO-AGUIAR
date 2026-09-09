@@ -27,6 +27,7 @@ function candidatosDoCargo(cargo: Cargo) {
 
 export default function Dashboard() {
   const [visitaRows, setVisitaRows] = useState<Row[]>([]);
+  const [resumoRows, setResumoRows] = useState<Row[]>([]);
   const [cargo, setCargo] = useState<Cargo>("Deputado Estadual");
   const [candidato, setCandidato] = useState("SÉRGIO");
   const [bairro, setBairro] = useState("Todos os bairros");
@@ -48,6 +49,7 @@ export default function Dashboard() {
       if (!response.ok) setErro(json.erro || "Não foi possível atualizar os dados.");
       else {
         setVisitaRows(json.visitaRows || []);
+        setResumoRows(json.rows || []);
         setUpdated(json.atualizadoEm || "");
       }
     } catch {
@@ -78,6 +80,10 @@ export default function Dashboard() {
     (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
     (visita === "Todas as visitas" || r.VISITA === visita)
   ), [visitaRows, bairro, visita]);
+
+  const resumoFiltrado = useMemo(() => resumoRows.filter(r =>
+    bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro
+  ), [resumoRows, bairro]);
 
   const registrosPorVisita = useMemo(() => visitaRows.filter(r =>
     visita === "Todas as visitas" || r.VISITA === visita
@@ -125,11 +131,27 @@ export default function Dashboard() {
 
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-  const ruasComVoto = new Set(
-    registrosFiltrados
-      .filter(r => String(r["RUA/LOCALIDADE"] || "") && Number(r[candidato] || 0) > 0)
-      .map(r => `${String(r["BAIRRO/ÁREA"] || "")}|||${String(r["RUA/LOCALIDADE"] || "")}`)
+
+  const ruasCadastradas = new Set(
+    resumoFiltrado
+      .filter(r => String(r["RUA/LOCALIDADE"] || "").trim())
+      .map(r => `${String(r["BAIRRO/ÁREA"] || "")}|||${String(r["RUA/LOCALIDADE"] || "").trim()}`)
   ).size;
+
+  const ruasComVoto = visita === "Todas as visitas"
+    ? new Set(
+        resumoFiltrado
+          .filter(r => String(r["RUA/LOCALIDADE"] || "").trim() && Number(r[candidato] || 0) > 0)
+          .map(r => `${String(r["BAIRRO/ÁREA"] || "")}|||${String(r["RUA/LOCALIDADE"] || "").trim()}`)
+      ).size
+    : new Set(
+        registrosFiltrados
+          .filter(r => String(r["RUA/LOCALIDADE"] || "").trim() && Number(r[candidato] || 0) > 0)
+          .map(r => `${String(r["BAIRRO/ÁREA"] || "")}|||${String(r["RUA/LOCALIDADE"] || "").trim()}`)
+      ).size;
+
+  const registrosCadastrados = resumoFiltrado.length;
+  const ruasSemVoto = Math.max(0, ruasCadastradas - ruasComVoto);
   const top = ranking[0];
   const maxRanking = Math.max(1, ...ranking.map(x => x.votos));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
@@ -169,7 +191,7 @@ export default function Dashboard() {
     const linhasCasas = compararCasas.map(x => `<tr><td>${safe(x.nome)}</td>${visitasComparacao.map(v => `<td class="n">${Number(x.valores[v] || 0).toLocaleString("pt-BR")}</td>`).join("")}</tr>`).join("");
     const linhasBairros = bairrosMaisVotados.map(x => `<tr><td>${safe(x.cargo)}</td><td>${safe(x.nome)}</td><td>${safe(x.bairro)}</td><td class="n">${x.votos.toLocaleString("pt-BR")}</td></tr>`).join("");
 
-    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><h2>Casas por visita</h2><table><thead><tr><th>Indicador</th><th class="n">1ª visita</th><th class="n">2ª visita</th><th class="n">Visita extra</th></tr></thead><tbody>${linhasCasas}</tbody></table><h2>Bairro mais votado por candidato/categoria</h2><table><thead><tr><th>Cargo</th><th>Campo</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasBairros}</tbody></table><div class="grid"><div><h2>Ranking de ruas — ${safe(candidato)}</h2><table><thead><tr><th>#</th><th>Rua/Localidade</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasRanking}</tbody></table></div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
+    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><p><strong>${ruasCadastradas.toLocaleString("pt-BR")}</strong> ruas/localidades cadastradas • <strong>${ruasComVoto.toLocaleString("pt-BR")}</strong> com votos para ${safe(candidato)} • <strong>${registrosCadastrados.toLocaleString("pt-BR")}</strong> registros na base.</p><h2>Casas por visita</h2><table><thead><tr><th>Indicador</th><th class="n">1ª visita</th><th class="n">2ª visita</th><th class="n">Visita extra</th></tr></thead><tbody>${linhasCasas}</tbody></table><h2>Bairro mais votado por candidato/categoria</h2><table><thead><tr><th>Cargo</th><th>Campo</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasBairros}</tbody></table><div class="grid"><div><h2>Ranking de ruas — ${safe(candidato)}</h2><p>Amostra: top ${ranking.length} ruas com maior votação no filtro atual.</p><table><thead><tr><th>#</th><th>Rua/Localidade</th><th>Bairro/Área</th><th class="n">Votos</th></tr></thead><tbody>${linhasRanking}</tbody></table></div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
     janela.document.close();
   }
 
@@ -198,7 +220,7 @@ export default function Dashboard() {
         <section className="metrics">
           <article className="metric-card"><span className="metric-label">Votos no cargo</span><strong className="metric-value">{votos.toLocaleString("pt-BR")}</strong><div className="metric-detail">{cargo} • {visita}</div></article>
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
-          <article className="metric-card"><span className="metric-label">Ruas com votos</span><strong className="metric-value">{ruasComVoto}</strong><div className="metric-detail">Com registro para {candidato}</div></article>
+          <article className="metric-card"><span className="metric-label">Ruas cadastradas</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong><div className="metric-detail">{registrosCadastrados.toLocaleString("pt-BR")} registros • {ruasComVoto.toLocaleString("pt-BR")} com votos</div><div className="metric-detail">{ruasSemVoto.toLocaleString("pt-BR")} sem votos para {candidato}</div></article>
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
           <article className="metric-card"><span className="metric-label">Bairro mais votado</span><strong className="metric-value metric-text">{bairroMaisVotadoSelecionado?.bairro || "Sem dados"}</strong><div className="metric-detail">{(bairroMaisVotadoSelecionado?.votos || 0).toLocaleString("pt-BR")} votos • {candidato}</div></article>
         </section>
@@ -232,7 +254,7 @@ export default function Dashboard() {
 
         <section className="dashboard-grid">
           <article className="panel">
-            <div className="panel-head"><div><h2>Ranking de ruas — {candidato}</h2><div className="panel-kicker">{bairro} • {visita}</div></div></div>
+            <div className="panel-head"><div><h2>Ranking de ruas — {candidato}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">AMOSTRA: exibindo top {ranking.length} ruas • {ruasComVoto.toLocaleString("pt-BR")} ruas com votos no filtro</div></div></div>
             {ranking.length ? <div className="rank-list">{ranking.map((x, i) => <div className="rank-row" key={`${x.bairro}-${x.rua}`}><span className="rank-number">{String(i + 1).padStart(2, "0")}</span><div className="rank-name"><strong>{x.rua}</strong><span>{x.bairro}</span></div><div className="bar-track"><div className="bar" style={{width:`${Math.max(3, x.votos / maxRanking * 100)}%`}} /></div><span className="rank-votes">{x.votos.toLocaleString("pt-BR")}</span></div>)}</div> : <div className="empty-state">Sem votos lançados para o filtro selecionado.</div>}
           </article>
 
