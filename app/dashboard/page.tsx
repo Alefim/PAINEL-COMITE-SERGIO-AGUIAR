@@ -100,7 +100,11 @@ export default function Dashboard() {
 
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
-  const ruasComVoto = ranking.length;
+  const ruasComVoto = new Set(
+    registrosFiltrados
+      .filter(r => String(r["RUA/LOCALIDADE"] || "") && Number(r[candidato] || 0) > 0)
+      .map(r => `${String(r["BAIRRO/ÁREA"] || "")}|||${String(r["RUA/LOCALIDADE"] || "")}`)
+  ).size;
   const top = ranking[0];
   const maxRanking = Math.max(1, ...ranking.map(x => x.votos));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
