@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./dashboard-metrics.css";
 
 export const metadata: Metadata = {
   title: "Painel de Planilhas - Comitê Sérgio Aguiar",
