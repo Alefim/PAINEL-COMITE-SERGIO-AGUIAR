@@ -6,6 +6,12 @@
   align-items: stretch;
 }
 
+/* O painel trabalha com o voto do candidato/categoria selecionado.
+   O card "Votos no cargo" fica oculto em qualquer visita. */
+.metrics > .metric-card:first-child {
+  display: none;
+}
+
 .metric-card {
   min-width: 0;
   min-height: 124px;
