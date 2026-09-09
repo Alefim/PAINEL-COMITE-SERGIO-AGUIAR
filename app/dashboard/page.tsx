@@ -191,17 +191,14 @@ export default function Dashboard() {
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
 
   const compararCasas = useMemo(() => [
-    { nome: "Ruas cadastradas", valores: Object.fromEntries(visitasComparacao.map(v => [v, conferenciaRuas.contagem[v]])) },
-    ...[
-      { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
-      { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
-    ].map(item => ({
-      nome: item.nome,
-      valores: Object.fromEntries(visitasComparacao.map(v => [v, visitaRows
-        .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
-        .reduce((s, r) => s + Number(r[item.campo] || 0), 0)])),
-    })),
-  ], [visitaRows, bairro, conferenciaRuas]);
+    { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
+    { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
+  ].map(item => ({
+    nome: item.nome,
+    valores: Object.fromEntries(visitasComparacao.map(v => [v, visitaRows
+      .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
+      .reduce((s, r) => s + Number(r[item.campo] || 0), 0)])),
+  })), [visitaRows, bairro]);
 
   const votosPorVisita = useMemo(() => visitasComparacao.map(v => ({
     nome: v,
@@ -273,29 +270,6 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="panel visit-comparison">
-          <div className="panel-head">
-            <div>
-              <h2>Conferência das ruas entre as visitas</h2>
-              <div className="panel-kicker">{bairro} • comparação por bairro + nome da rua, ignorando apenas maiúsculas, acentos e espaços extras</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <strong style={{display:"block", color: conferenciaRuas.divergencias.length ? "#c91422" : "#008546", fontSize:18}}>{conferenciaRuas.divergencias.length}</strong>
-              <span className="panel-kicker">divergências</span>
-            </div>
-          </div>
-          <div className="visit-summary">
-            <div><span>RUAS ÚNICAS</span><strong>{conferenciaRuas.total.toLocaleString("pt-BR")}</strong></div>
-            <div><span>NAS 3 VISITAS</span><strong>{conferenciaRuas.sincronizadas.toLocaleString("pt-BR")}</strong></div>
-            <div><span>DIVERGENTES</span><strong>{conferenciaRuas.divergencias.length.toLocaleString("pt-BR")}</strong></div>
-          </div>
-          <div className="visit-table">
-            <div className="visit-table-head"><span>Rua / localidade</span><span>1ª visita</span><span>2ª visita</span><span>Extra</span></div>
-            {conferenciaRuas.divergencias.length ? conferenciaRuas.divergencias.slice(0, 30).map(x => <div className="visit-table-row" key={x.key} title={x.bairro}><strong>{x.rua}<small style={{display:"block", color:"#98a0ad", fontWeight:400}}>{x.bairro}</small></strong>{visitasComparacao.map(v => <span key={v} style={{color:x.visitas.has(v) ? "#008546" : "#c91422", fontWeight:800}}>{x.visitas.has(v) ? "OK" : "—"}</span>)}</div>) : <div className="empty-state">As relações de ruas da 1ª visita, 2ª visita e visita extra estão de acordo.</div>}
-          </div>
-          {conferenciaRuas.divergencias.length > 30 ? <div className="panel-kicker" style={{marginTop:10}}>Mostrando 30 de {conferenciaRuas.divergencias.length} divergências. O relatório inclui até 50.</div> : null}
-        </section>
-
         <section className="dashboard-grid">
           <article className="panel">
             <div className="panel-head"><div><h2>Ranking de ruas — {candidato}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">AMOSTRA: exibindo top {ranking.length} ruas • {ruasComVoto.toLocaleString("pt-BR")} ruas com votos • {ruasSemVoto.toLocaleString("pt-BR")} sem votos para {candidato}</div></div></div>
@@ -309,7 +283,7 @@ export default function Dashboard() {
         </section>
       </>}
 
-      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos • conferência de ruas em tempo real.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
+      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos.</span><span>Desenvolvido por: <strong>Álefim Oliveira</strong></span></footer>
     </div>
   </main>;
 }
