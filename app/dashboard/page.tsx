@@ -147,8 +147,6 @@ export default function Dashboard() {
   const votos = totais.reduce((s, x) => s + x.total, 0);
   const totalCandidato = registrosFiltrados.reduce((s, r) => s + Number(r[candidato] || 0), 0);
 
-  // Cada rua é contada dentro da visita em que foi cadastrada.
-  // Assim, a mesma rua na 1ª, 2ª e Extra representa três registros no filtro "Todas as visitas".
   const ruasCadastradas = new Set(registrosFiltrados.map(chaveRuaVisita)).size;
 
   const ruasComVoto = new Set(
@@ -225,7 +223,7 @@ export default function Dashboard() {
         <section className="metrics">
           <article className="metric-card"><span className="metric-label">Votos no cargo</span><strong className="metric-value">{votos.toLocaleString("pt-BR")}</strong><div className="metric-detail">{cargo} • {visita}</div></article>
           <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
-          <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article>
+          {visita !== "Todas as visitas" ? <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article> : null}
           <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
           <article className="metric-card"><span className="metric-label">Bairro mais votado</span><strong className="metric-value metric-text">{bairroMaisVotadoSelecionado?.bairro || "Sem dados"}</strong><div className="metric-detail">{(bairroMaisVotadoSelecionado?.votos || 0).toLocaleString("pt-BR")} votos • {candidato}</div></article>
         </section>
