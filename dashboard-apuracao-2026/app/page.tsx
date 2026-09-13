@@ -1,6 +1,6 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
-import {BarChart3,CheckCircle2,Clock3,Database,MapPin,PartyPopper,RefreshCw,Search,ShieldCheck,Volume2,Vote} from "lucide-react";
+import {BarChart3,CheckCircle2,Clock3,Database,LogOut,MapPin,PartyPopper,RefreshCw,Search,ShieldCheck,Volume2,Vote} from "lucide-react";
 import CearaMap from "@/components/CearaMap";
 type Row={section:string;location:string;municipality:string;votes:number;federalVotes?:number;checked?:boolean;candidateVotes?:Record<string,number>;eligible:number;ibgeCode?:string};
 type Payload={rows:Row[];updatedAt:string;source:"sheet"|"demo";message?:string;federalCandidate?:string;candidateMeta?:{key:string;name:string;number:string;office:string}[]};
@@ -24,11 +24,12 @@ export default function Home(){
  function playVictorySound(){sendPlayerCommand("unMute");sendPlayerCommand("setVolume",[100]);sendPlayerCommand("playVideo")}
  function armVictorySound(){setSoundArmed(true);sendPlayerCommand("mute");sendPlayerCommand("playVideo");window.setTimeout(()=>{sendPlayerCommand("pauseVideo");sendPlayerCommand("unMute");if(victoryReached)playVictorySound()},700)}
  function toggleDetails(){setShowDetails(current=>{const opening=!current;if(opening)window.setTimeout(()=>document.getElementById("resultados-por-secao")?.scrollIntoView({behavior:"smooth",block:"start"}),50);return opening})}
+ async function logout(){await fetch("/api/logout",{method:"POST"});window.location.replace("/login")}
  useEffect(()=>{if(victoryReached&&soundArmed&&playerReady)playVictorySound()},[victoryReached,soundArmed,playerReady]);
  const candidateTotals=(data.candidateMeta||[]).map(candidate=>({...candidate,votes:rows.reduce((sum,row)=>sum+(row.candidateVotes?.[candidate.key]||0),0)}));
  const ranking=Object.entries(rows.reduce<Record<string,number>>((a,r)=>{a[r.location]=(a[r.location]||0)+r.votes;return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,5);
  return <main className="app-shell">
-  <header className="topbar"><div className="brand"><span className="brand-mark">40</span><div><strong>APURAÇÃO 2026</strong><small>Sérgio Aguiar · Deputado Estadual</small></div></div><div className="status"><i/>Atualização automática<button onClick={refresh}><RefreshCw className={loading?"spin":""}/></button></div></header>
+  <header className="topbar"><div className="brand"><span className="brand-mark">40</span><div><strong>APURAÇÃO 2026</strong><small>Sérgio Aguiar · Deputado Estadual</small></div></div><div className="status"><i/>Atualização automática<button onClick={refresh} aria-label="Atualizar dados"><RefreshCw className={loading?"spin":""}/></button><button className="logout" onClick={logout}><LogOut/>Sair</button></div></header>
   <section className="toolbar"><div className="switch"><button className={mode==="interno"?"active":""} onClick={()=>setMode("interno")}><Database/>Apuração interna</button><button className={mode==="tse"?"active":""} onClick={()=>setMode("tse")}><ShieldCheck/>TSE oficial</button></div><button className={showDetails?"details-toggle active":"details-toggle"} onClick={toggleDetails} aria-expanded={showDetails} aria-controls="resultados-por-secao"><BarChart3/>{showDetails?"Ocultar dados por seção":"Dados por seção"}</button><label><MapPin/><select value={city} onChange={e=>setCity(e.target.value)}>{cities.map(c=><option key={c}>{c}</option>)}</select></label><button className={soundArmed?"sound-toggle active":"sound-toggle"} onClick={armVictorySound}><Volume2/>{soundArmed?"Som da vitória ativado":"Ativar som da vitória"}</button><button className="refresh" onClick={refresh}><RefreshCw/>Atualizar dados</button></section>
   <iframe ref={playerRef} onLoad={()=>setPlayerReady(true)} className="victory-player" title="Música da vitória" allow="autoplay; encrypted-media" src={`https://www.youtube.com/embed/${VICTORY_VIDEO_ID}?enablejsapi=1&playsinline=1&loop=1&playlist=${VICTORY_VIDEO_ID}`}/>
   {victoryReached&&<div className="victory-banner"><PartyPopper/><div><strong>Meta histórica superada!</strong><span>Sérgio chegou a {fmt.format(camocimVotes)} votos em Camocim e ultrapassou os {fmt.format(PREVIOUS_ELECTION_VOTES)} da última eleição.</span></div><button onClick={()=>{setSoundArmed(true);playVictorySound()}}><Volume2/>Tocar música</button></div>}
