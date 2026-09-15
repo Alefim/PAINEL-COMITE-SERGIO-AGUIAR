@@ -132,7 +132,6 @@ export default function Dashboard() {
   ).size;
 
   const ruasSemVoto = Math.max(0, ruasCadastradas - ruasComVoto);
-  const top = ranking[0];
   const maxRanking = Math.max(1, ...ranking.map(x => x.votos));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
 
@@ -163,7 +162,7 @@ export default function Dashboard() {
     if (!janela) return alert("Permita a abertura de pop-ups para emitir o relatório.");
     janela.opener = null;
     const safe = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, char => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#039;",
     }[char] || char));
     const data = new Date().toLocaleString("pt-BR");
     const linhasRanking = ranking.length ? ranking.map((x, i) => `<tr><td>${i + 1}</td><td>${safe(x.rua)}</td><td>${safe(x.bairro)}</td><td class="n">${x.votos.toLocaleString("pt-BR")}</td></tr>`).join("") : `<tr><td colspan="4">Sem votos lançados para o filtro selecionado.</td></tr>`;
@@ -196,21 +195,24 @@ export default function Dashboard() {
       </section>
 
       {erro ? <div className="error-state">{erro}. Verifique se a planilha está compartilhada para leitura por link.</div> : <>
-        <section className="metrics">
-          <article className="metric-card"><span className="metric-label">Votos da seleção</span><strong className="metric-value">{totalCandidato.toLocaleString("pt-BR")}</strong><div className="metric-detail">{candidato}</div></article>
-          {visita !== "Todas as visitas" ? <article className="metric-card"><span className="metric-label">Ruas no filtro</span><strong className="metric-value">{ruasCadastradas.toLocaleString("pt-BR")}</strong></article> : null}
-          <article className="metric-card"><span className="metric-label">Maior votação em rua</span><strong className="metric-value">{(top?.votos || 0).toLocaleString("pt-BR")}</strong><div className="metric-detail">{top?.rua || "Sem dados"}</div></article>
-          <article className="metric-card"><span className="metric-label">Eleitores pesquisados</span><strong className="metric-value">{eleitoresPesquisados.toLocaleString("pt-BR")}</strong><div className="metric-detail">Total pesquisado para Deputado Estadual</div></article>
+        <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))",gap:"16px",alignItems:"stretch",marginBottom:"16px"}}>
+          <article className="panel" style={{display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:"150px"}}>
+            <div className="panel-head" style={{marginBottom:"12px"}}><div><h2>Votos da seleção por visita</h2><div className="panel-kicker">Exibindo os votos de {candidato} em cada visita.</div></div></div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"18px",alignItems:"end",background:"#f7f8fa",borderRadius:"14px",padding:"16px"}}>
+              {votosPorVisita.map(x => <div key={x.nome} style={{display:"grid",gap:"7px",minWidth:0}}><span style={{color:"#7b8494",fontSize:"10px",fontWeight:800,letterSpacing:".08em",textTransform:"uppercase"}}>{x.nome}</span><strong style={{color:"#143968",fontFamily:"Georgia,serif",fontSize:"clamp(24px,2.1vw,34px)",lineHeight:1}}>{x.total.toLocaleString("pt-BR")}</strong></div>)}
+            </div>
+          </article>
+
+          <article className="metric-card" style={{display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"150px",padding:"22px"}}>
+            <span className="metric-label">Eleitores pesquisados</span>
+            <strong className="metric-value" style={{fontSize:"clamp(36px,3vw,48px)",marginTop:"12px"}}>{eleitoresPesquisados.toLocaleString("pt-BR")}</strong>
+          </article>
         </section>
 
-        <section className="panel visit-comparison">
-          <div className="panel-head"><div><h2>Votos da seleção por visita</h2><div className="panel-kicker">Exibindo os votos de {candidato} em cada visita.</div></div></div>
-          <div className="visit-summary">
-            {votosPorVisita.map(x => <div key={x.nome}><span>{x.nome.toUpperCase()}</span><strong>{x.total.toLocaleString("pt-BR")}</strong></div>)}
-          </div>
-          <div className="visit-table">
-            <div className="visit-table-head"><span>Indicador</span><span>1ª visita</span><span>2ª visita</span><span>Visita extra</span></div>
-            {compararCasas.map(x => <div className="visit-table-row" key={x.nome}><strong>{x.nome}</strong>{visitasComparacao.map(v => <span key={v}>{Number(x.valores[v] || 0).toLocaleString("pt-BR")}</span>)}</div>)}
+        <section className="panel" style={{marginBottom:"18px",padding:"20px"}}>
+          <div className="visit-table" style={{marginTop:0,overflowX:"auto"}}>
+            <div className="visit-table-head" style={{gridTemplateColumns:"minmax(180px,2fr) repeat(3,minmax(100px,1fr))",padding:"11px 12px"}}><span>Indicador</span><span>1ª visita</span><span>2ª visita</span><span>Visita extra</span></div>
+            {compararCasas.map(x => <div className="visit-table-row" style={{gridTemplateColumns:"minmax(180px,2fr) repeat(3,minmax(100px,1fr))",padding:"12px"}} key={x.nome}><strong>{x.nome}</strong>{visitasComparacao.map(v => <span key={v}>{Number(x.valores[v] || 0).toLocaleString("pt-BR")}</span>)}</div>)}
           </div>
         </section>
 
