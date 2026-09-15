@@ -119,6 +119,48 @@ export default function Dashboard() {
       .slice(0, 15);
   }, [registrosFiltrados, opcoesCandidato]);
 
+  const rankingPorVisita = useMemo(() => {
+    type VisitaNome = (typeof visitasComparacao)[number];
+    type BairroComparativo = {
+      bairro: string;
+      visitas: Record<VisitaNome, Record<string, number>>;
+    };
+
+    const criarVisitas = () => Object.fromEntries(
+      visitasComparacao.map(v => [v, Object.fromEntries(opcoesCandidato.map(nome => [nome, 0]))])
+    ) as Record<VisitaNome, Record<string, number>>;
+
+    const mapa = new Map<string, BairroComparativo>();
+
+    registrosTerritoriais.forEach(r => {
+      const nomeBairro = String(r["BAIRRO/ÁREA"] || "").trim();
+      const visitaAtual = visitasComparacao.find(v => v === r.VISITA);
+      if (!nomeBairro || !visitaAtual) return;
+
+      const atual = mapa.get(nomeBairro) || { bairro: nomeBairro, visitas: criarVisitas() };
+      opcoesCandidato.forEach(nome => {
+        atual.visitas[visitaAtual][nome] = (atual.visitas[visitaAtual][nome] || 0) + Number(r[nome] || 0);
+      });
+      mapa.set(nomeBairro, atual);
+    });
+
+    const totalDaVisita = (item: BairroComparativo, v: VisitaNome) =>
+      opcoesCandidato.reduce((s, nome) => s + Number(item.visitas[v][nome] || 0), 0);
+
+    return Array.from(mapa.values())
+      .filter(item => visitasComparacao.some(v => totalDaVisita(item, v) > 0))
+      .sort((a, b) => {
+        const b1 = Number(b.visitas["1ª visita"][candidato] || 0);
+        const a1 = Number(a.visitas["1ª visita"][candidato] || 0);
+        if (b1 !== a1) return b1 - a1;
+        const b2 = Number(b.visitas["2ª visita"][candidato] || 0);
+        const a2 = Number(a.visitas["2ª visita"][candidato] || 0);
+        if (b2 !== a2) return b2 - a2;
+        return Number(b.visitas["Visita extra"][candidato] || 0) - Number(a.visitas["Visita extra"][candidato] || 0);
+      })
+      .slice(0, 15);
+  }, [registrosTerritoriais, opcoesCandidato, candidato]);
+
   const totais = useMemo(() => opcoesCandidato.map(nome => ({
     nome,
     total: registrosFiltrados.reduce((s, r) => s + Number(r[nome] || 0), 0),
@@ -270,20 +312,42 @@ export default function Dashboard() {
 
         <section className="dashboard-grid">
           <article className="panel">
-            <div className="panel-head"><div><h2>Pretensão de votos por bairro — {cargo}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">Votos individuais de todos os candidatos/categorias do cargo em cada bairro.</div></div></div>
-            {ranking.length ? <div style={{display:"grid",gap:"10px"}}>{ranking.map((x, i) => <div key={x.bairro} style={{borderBottom:"1px solid #eef1f4",padding:"10px 0 14px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"32px minmax(150px,1fr) minmax(140px,1fr)",gap:"10px",alignItems:"center"}}>
-                <span className="rank-number">{String(i + 1).padStart(2, "0")}</span>
-                <div className="rank-name"><strong>{x.bairro}</strong><span>{cargo}</span></div>
-                <div className="bar-track"><div className="bar" style={{width:`${Math.max(3, x.total / maxRanking * 100)}%`}} /></div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(115px,1fr))",gap:"7px",margin:"10px 0 0 42px"}}>
-                {opcoesCandidato.map(nome => <div key={nome} style={{background:nome===candidato?"#fff1f2":"#f7f8fa",border:nome===candidato?"1px solid #f6c8cd":"1px solid #eef1f4",borderRadius:"9px",padding:"8px 9px",minWidth:0}}>
-                  <span style={{display:"block",fontSize:"9px",fontWeight:800,color:nome===candidato?"#c91422":"#7b8494",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nome}</span>
-                  <strong style={{display:"block",fontSize:"14px",color:"#143968",marginTop:"3px"}}>{Number(x.candidatos[nome] || 0).toLocaleString("pt-BR")}</strong>
-                </div>)}
-              </div>
-            </div>)}</div> : <div className="empty-state">Sem votos lançados para o cargo e filtros selecionados.</div>}
+            <div className="panel-head"><div><h2>Pretensão de votos por bairro — {cargo}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">{visita === "Todas as visitas" ? "Comparativo da 1ª visita, 2ª visita e visita extra, sem somar uma visita com a outra." : "Votos individuais de todos os candidatos/categorias do cargo em cada bairro."}</div></div></div>
+            {visita === "Todas as visitas" ? (
+              rankingPorVisita.length ? <div style={{display:"grid",gap:"10px",maxHeight:"700px",overflowY:"auto",paddingRight:"6px"}}>{rankingPorVisita.map((x, i) => <div key={x.bairro} style={{borderBottom:"1px solid #eef1f4",padding:"10px 0 16px"}}>
+                <div style={{display:"grid",gridTemplateColumns:"32px minmax(0,1fr)",gap:"10px",alignItems:"start"}}>
+                  <span className="rank-number">{String(i + 1).padStart(2, "0")}</span>
+                  <div style={{minWidth:0}}>
+                    <div className="rank-name" style={{marginBottom:"10px"}}><strong>{x.bairro}</strong><span>{cargo}</span></div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:"10px"}}>
+                      {visitasComparacao.map(v => <div key={v} style={{background:"#f7f8fa",border:"1px solid #e7ebf0",borderRadius:"12px",padding:"12px",minWidth:0}}>
+                        <span style={{display:"block",color:"#143968",fontSize:"10px",fontWeight:900,letterSpacing:".07em",textTransform:"uppercase",marginBottom:"9px"}}>{v}</span>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(92px,1fr))",gap:"7px"}}>
+                          {opcoesCandidato.map(nome => <div key={nome} style={{background:nome===candidato?"#fff1f2":"#fff",border:nome===candidato?"1px solid #f6c8cd":"1px solid #eef1f4",borderRadius:"9px",padding:"8px",minWidth:0}}>
+                            <span style={{display:"block",fontSize:"8px",fontWeight:800,color:nome===candidato?"#c91422":"#7b8494",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nome}</span>
+                            <strong style={{display:"block",fontSize:"14px",color:"#143968",marginTop:"3px"}}>{Number(x.visitas[v][nome] || 0).toLocaleString("pt-BR")}</strong>
+                          </div>)}
+                        </div>
+                      </div>)}
+                    </div>
+                  </div>
+                </div>
+              </div>)}</div> : <div className="empty-state">Sem votos lançados para os filtros selecionados.</div>
+            ) : (
+              ranking.length ? <div style={{display:"grid",gap:"10px"}}>{ranking.map((x, i) => <div key={x.bairro} style={{borderBottom:"1px solid #eef1f4",padding:"10px 0 14px"}}>
+                <div style={{display:"grid",gridTemplateColumns:"32px minmax(150px,1fr) minmax(140px,1fr)",gap:"10px",alignItems:"center"}}>
+                  <span className="rank-number">{String(i + 1).padStart(2, "0")}</span>
+                  <div className="rank-name"><strong>{x.bairro}</strong><span>{cargo}</span></div>
+                  <div className="bar-track"><div className="bar" style={{width:`${Math.max(3, x.total / maxRanking * 100)}%`}} /></div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(115px,1fr))",gap:"7px",margin:"10px 0 0 42px"}}>
+                  {opcoesCandidato.map(nome => <div key={nome} style={{background:nome===candidato?"#fff1f2":"#f7f8fa",border:nome===candidato?"1px solid #f6c8cd":"1px solid #eef1f4",borderRadius:"9px",padding:"8px 9px",minWidth:0}}>
+                    <span style={{display:"block",fontSize:"9px",fontWeight:800,color:nome===candidato?"#c91422":"#7b8494",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{nome}</span>
+                    <strong style={{display:"block",fontSize:"14px",color:"#143968",marginTop:"3px"}}>{Number(x.candidatos[nome] || 0).toLocaleString("pt-BR")}</strong>
+                  </div>)}
+                </div>
+              </div>)}</div> : <div className="empty-state">Sem votos lançados para o cargo e filtros selecionados.</div>
+            )}
           </article>
 
           <article className="panel">
