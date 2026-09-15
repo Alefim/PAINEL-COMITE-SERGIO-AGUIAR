@@ -272,11 +272,10 @@ export default function Dashboard() {
           <article className="panel">
             <div className="panel-head"><div><h2>Pretensão de votos por bairro — {cargo}</h2><div className="panel-kicker">{bairro} • {visita}</div><div className="panel-kicker">Votos individuais de todos os candidatos/categorias do cargo em cada bairro.</div></div></div>
             {ranking.length ? <div style={{display:"grid",gap:"10px"}}>{ranking.map((x, i) => <div key={x.bairro} style={{borderBottom:"1px solid #eef1f4",padding:"10px 0 14px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"32px minmax(150px,1fr) minmax(100px,.8fr) 80px",gap:"10px",alignItems:"center"}}>
+              <div style={{display:"grid",gridTemplateColumns:"32px minmax(150px,1fr) minmax(140px,1fr)",gap:"10px",alignItems:"center"}}>
                 <span className="rank-number">{String(i + 1).padStart(2, "0")}</span>
                 <div className="rank-name"><strong>{x.bairro}</strong><span>{cargo}</span></div>
                 <div className="bar-track"><div className="bar" style={{width:`${Math.max(3, x.total / maxRanking * 100)}%`}} /></div>
-                <span className="rank-votes">{x.total.toLocaleString("pt-BR")}</span>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(115px,1fr))",gap:"7px",margin:"10px 0 0 42px"}}>
                 {opcoesCandidato.map(nome => <div key={nome} style={{background:nome===candidato?"#fff1f2":"#f7f8fa",border:nome===candidato?"1px solid #f6c8cd":"1px solid #eef1f4",borderRadius:"9px",padding:"8px 9px",minWidth:0}}>
