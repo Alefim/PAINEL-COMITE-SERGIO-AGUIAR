@@ -140,15 +140,34 @@ export default function Dashboard() {
   const maxRanking = Math.max(1, ...ranking.map(x => x.total));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
 
-  const compararCasas = useMemo(() => [
-    { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
-    { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
-  ].map(item => ({
-    nome: item.nome,
-    valores: Object.fromEntries(visitasComparacao.map(v => [v, visitaRows
-      .filter(r => (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) && r.VISITA === v)
-      .reduce((s, r) => s + Number(r[item.campo] || 0), 0)])),
-  })), [visitaRows, bairro]);
+  const compararCasas = useMemo(() => {
+    const registrosPorVisita = (v: (typeof visitasComparacao)[number]) => visitaRows.filter(r =>
+      (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
+      r.VISITA === v &&
+      String(r["RUA/LOCALIDADE"] || "").trim()
+    );
+
+    const ruasPorVisita = {
+      nome: "Ruas cadastradas",
+      valores: Object.fromEntries(visitasComparacao.map(v => [
+        v,
+        new Set(registrosPorVisita(v).map(chaveRua)).size,
+      ])),
+    };
+
+    const indicadoresCasas = [
+      { nome: "Casas fechadas", campo: "CASAS FECHADAS" },
+      { nome: "Casas desabitadas", campo: "CASAS DESABITADAS" },
+    ].map(item => ({
+      nome: item.nome,
+      valores: Object.fromEntries(visitasComparacao.map(v => [
+        v,
+        registrosPorVisita(v).reduce((s, r) => s + Number(r[item.campo] || 0), 0),
+      ])),
+    }));
+
+    return [ruasPorVisita, ...indicadoresCasas];
+  }, [visitaRows, bairro]);
 
   const votosPorVisita = useMemo(() => visitasComparacao.map(v => ({
     nome: v,
