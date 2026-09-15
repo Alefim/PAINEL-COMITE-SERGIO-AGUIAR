@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Row = Record<string, string | number>;
 type Cargo = keyof typeof camposPorCargo;
+type VisitaComparacao = (typeof visitasComparacao)[number];
 
 const camposPorCargo = {
   "Deputado Estadual": ["SÉRGIO", "ROMEU", "EUVALDETE", "OUTROS EST.", "INDECISOS EST."],
@@ -16,9 +17,9 @@ const camposPorCargo = {
 const visitasDisponiveis = ["Todas as visitas", "1ª visita", "2ª visita", "Visita extra"] as const;
 const visitasComparacao = ["1ª visita", "2ª visita", "Visita extra"] as const;
 const coresCandidatos: Record<string, string> = {
-  "SÉRGIO": "#ffd500",
-  "ROMEU": "#e51b2a",
-  "EUVALDETE": "#0072bc",
+  SÉRGIO: "#ffd500",
+  ROMEU: "#e51b2a",
+  EUVALDETE: "#0072bc",
 };
 
 function candidatosDoCargo(cargo: Cargo) {
@@ -36,10 +37,6 @@ function normalizarChave(value: unknown) {
 
 function chaveRua(row: Row) {
   return `${normalizarChave(row["BAIRRO/ÁREA"])}|||${normalizarChave(row["RUA/LOCALIDADE"])}`;
-}
-
-function chaveRuaVisita(row: Row) {
-  return `${chaveRua(row)}|||${normalizarChave(row.VISITA)}`;
 }
 
 export default function Dashboard() {
@@ -120,15 +117,14 @@ export default function Dashboard() {
   }, [registrosFiltrados, opcoesCandidato]);
 
   const rankingPorVisita = useMemo(() => {
-    type VisitaNome = (typeof visitasComparacao)[number];
     type BairroComparativo = {
       bairro: string;
-      visitas: Record<VisitaNome, Record<string, number>>;
+      visitas: Record<VisitaComparacao, Record<string, number>>;
     };
 
     const criarVisitas = () => Object.fromEntries(
       visitasComparacao.map(v => [v, Object.fromEntries(opcoesCandidato.map(nome => [nome, 0]))])
-    ) as Record<VisitaNome, Record<string, number>>;
+    ) as Record<VisitaComparacao, Record<string, number>>;
 
     const mapa = new Map<string, BairroComparativo>();
 
@@ -144,7 +140,7 @@ export default function Dashboard() {
       mapa.set(nomeBairro, atual);
     });
 
-    const totalDaVisita = (item: BairroComparativo, v: VisitaNome) =>
+    const totalDaVisita = (item: BairroComparativo, v: VisitaComparacao) =>
       opcoesCandidato.reduce((s, nome) => s + Number(item.visitas[v][nome] || 0), 0);
 
     return Array.from(mapa.values())
@@ -170,20 +166,11 @@ export default function Dashboard() {
   const camposEleitoresPesquisados = camposPorCargo["Deputado Estadual"];
   const eleitoresPesquisados = registrosFiltrados.reduce((total, registro) => total +
     camposEleitoresPesquisados.reduce((subtotal, campo) => subtotal + Number(registro[campo] || 0), 0), 0);
-  const ruasCadastradas = new Set(registrosFiltrados.map(chaveRuaVisita)).size;
-
-  const ruasComVoto = new Set(
-    registrosFiltrados
-      .filter(r => Number(r[candidato] || 0) > 0)
-      .map(chaveRuaVisita)
-  ).size;
-
-  const ruasSemVoto = Math.max(0, ruasCadastradas - ruasComVoto);
   const maxRanking = Math.max(1, ...ranking.map(x => x.total));
   const maxCandidato = Math.max(1, ...totais.map(x => x.total));
 
   const compararCasas = useMemo(() => {
-    const registrosPorVisita = (v: (typeof visitasComparacao)[number]) => visitaRows.filter(r =>
+    const registrosPorVisita = (v: VisitaComparacao) => visitaRows.filter(r =>
       (bairro === "Todos os bairros" || r["BAIRRO/ÁREA"] === bairro) &&
       r.VISITA === v &&
       String(r["RUA/LOCALIDADE"] || "").trim()
@@ -239,12 +226,25 @@ export default function Dashboard() {
     const janela = window.open("", "_blank");
     if (!janela) return alert("Permita a abertura de pop-ups para emitir o relatório.");
     janela.opener = null;
+
     const safe = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, char => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&#039;",
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;",
     }[char] || char));
     const data = new Date().toLocaleString("pt-BR");
     const rankingCabecalho = opcoesCandidato.map(nome => `<th class="n">${safe(nome)}</th>`).join("");
-    const linhasRanking = ranking.length ? ranking.map((x, i) => `<tr><td>${i + 1}</td><td>${safe(x.bairro)}</td>${opcoesCandidato.map(nome => `<td class="n">${Number(x.candidatos[nome] || 0).toLocaleString("pt-BR")}</td>`).join("")}</tr>`).join("") : `<tr><td colspan="${opcoesCandidato.length + 2}">Sem votos lançados para o filtro selecionado.</td></tr>`;
+
+    const linhasRankingSimples = ranking.length
+      ? ranking.map((x, i) => `<tr><td>${i + 1}</td><td>${safe(x.bairro)}</td>${opcoesCandidato.map(nome => `<td class="n">${Number(x.candidatos[nome] || 0).toLocaleString("pt-BR")}</td>`).join("")}</tr>`).join("")
+      : `<tr><td colspan="${opcoesCandidato.length + 2}">Sem votos lançados para o filtro selecionado.</td></tr>`;
+
+    const linhasRankingPorVisita = rankingPorVisita.length
+      ? rankingPorVisita.map((x, i) => visitasComparacao.map((v, indiceVisita) => `<tr class="${indiceVisita === 0 ? "bairro-inicio" : ""}">${indiceVisita === 0 ? `<td rowspan="3">${i + 1}</td><td rowspan="3"><strong>${safe(x.bairro)}</strong></td>` : ""}<td class="visita-col">${safe(v)}</td>${opcoesCandidato.map(nome => `<td class="n">${Number(x.visitas[v][nome] || 0).toLocaleString("pt-BR")}</td>`).join("")}</tr>`).join("")).join("")
+      : `<tr><td colspan="${opcoesCandidato.length + 3}">Sem votos lançados para os filtros selecionados.</td></tr>`;
+
+    const tabelaPretensao = visita === "Todas as visitas"
+      ? `<p>Comparativo da 1ª visita, 2ª visita e visita extra por bairro, sem somar uma visita com a outra.</p><table><thead><tr><th>#</th><th>Bairro/Área</th><th>Visita</th>${rankingCabecalho}</tr></thead><tbody>${linhasRankingPorVisita}</tbody></table>`
+      : `<p>Votos individuais dos candidatos/categorias do cargo na visita selecionada.</p><table><thead><tr><th>#</th><th>Bairro/Área</th>${rankingCabecalho}</tr></thead><tbody>${linhasRankingSimples}</tbody></table>`;
+
     const linhasCandidatos = totais.map(x => `<tr><td>${safe(x.nome)}</td><td class="n">${x.total.toLocaleString("pt-BR")}</td></tr>`).join("");
     const detalharVisitas = (itens: Array<{ nome: string; total: number }>) => visita === "Todas as visitas"
       ? `<div class="visit-split">${itens.filter((x, i) => i < 2 || x.total > 0).map(x => `<div><span>${x.nome === "Visita extra" ? "EXTRA" : safe(x.nome)}</span><strong>${x.total.toLocaleString("pt-BR")}</strong></div>`).join("")}</div>`
@@ -257,7 +257,7 @@ export default function Dashboard() {
       ? `<div class="visit-split">${eleitoresPorVisita.map(x => `<div><span>${x.nome === "Visita extra" ? "EXTRA" : safe(x.nome)}</span><strong>${x.total.toLocaleString("pt-BR")}</strong></div>`).join("")}</div>`
       : `<strong style="display:block;font-size:30px;color:#143968;margin:5px 0">${eleitoresPesquisados.toLocaleString("pt-BR")}</strong>`;
 
-    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.5fr .8fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.visit-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #e5e8ed}.visit-split>div{background:#f7f8fa;border-radius:6px;padding:6px 7px}.visit-split span{font-size:8px;font-weight:700}.visit-split strong{display:block;font-size:14px;color:#143968;margin-top:2px}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,380px));gap:10px;margin-bottom:20px"><div class="f"><span>VOTOS DA SELEÇÃO</span>${valorVotosRelatorio}<b style="display:block;margin-top:5px">${safe(candidato)}</b>${detalheVotos}</div><div class="f"><span>ELEITORES PESQUISADOS POR VISITA</span>${eleitoresRelatorio}</div></div><div class="grid"><div><h2>Pretensão de votos por bairro — ${safe(cargo)}</h2><p>Cada bairro mostra os votos individuais de todos os candidatos/categorias do cargo selecionado.</p><table><thead><tr><th>#</th><th>Bairro/Área</th>${rankingCabecalho}</tr></thead><tbody>${linhasRanking}</tbody></table></div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
+    janela.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório territorial</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:35px}.faixa{height:7px;background:linear-gradient(90deg,#e51b2a 0 33%,#ffd500 33% 66%,#0072bc 66%);margin:-35px -35px 28px}h1,h2{color:#143968}h1{margin:0}p{color:#687487}table{width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:12px}th,td{padding:8px;border-bottom:1px solid #e5e8ed;text-align:left;vertical-align:top}th{background:#f4f5f7}.n{text-align:right;font-weight:700}.grid{display:grid;grid-template-columns:1.5fr .8fr;gap:18px}.filtros{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.f{padding:10px;border:1px solid #e5e8ed;border-radius:8px}.f span{display:block;color:#7b8494;font-size:9px;text-transform:uppercase}.f strong{font-size:12px}.visit-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid #e5e8ed}.visit-split>div{background:#f7f8fa;border-radius:6px;padding:6px 7px}.visit-split span{font-size:8px;font-weight:700}.visit-split strong{display:block;font-size:14px;color:#143968;margin-top:2px}.visita-col{font-weight:700;color:#143968;white-space:nowrap}.bairro-inicio td{border-top:2px solid #dfe4ea}.acoes{text-align:right}.acoes button{border:0;background:#e51b2a;color:#fff;padding:9px 13px;border-radius:8px;font-weight:700}@media print{.acoes{display:none}.grid{grid-template-columns:1fr}.page-break{break-before:page}}@media(max-width:700px){.grid,.filtros{grid-template-columns:1fr}}</style></head><body><div class="faixa"></div><div class="acoes"><button onclick="window.print()">Imprimir / Salvar em PDF</button></div><h1>Relatório territorial</h1><p>Comitê Sérgio Aguiar • Pesquisa 2026 • Emitido em ${safe(data)}</p><div class="filtros"><div class="f"><span>Visita</span><strong>${safe(visita)}</strong></div><div class="f"><span>Cargo</span><strong>${safe(cargo)}</strong></div><div class="f"><span>Candidato/Categoria</span><strong>${safe(candidato)}</strong></div><div class="f"><span>Bairro/Área</span><strong>${safe(bairro)}</strong></div></div><div style="display:grid;grid-template-columns:repeat(2,minmax(0,380px));gap:10px;margin-bottom:20px"><div class="f"><span>VOTOS DA SELEÇÃO</span>${valorVotosRelatorio}<b style="display:block;margin-top:5px">${safe(candidato)}</b>${detalheVotos}</div><div class="f"><span>ELEITORES PESQUISADOS POR VISITA</span>${eleitoresRelatorio}</div></div><div class="grid"><div><h2>Pretensão de votos por bairro — ${safe(cargo)}</h2>${tabelaPretensao}</div><div><h2>Comparativo de candidatos/categorias</h2><table><thead><tr><th>Nome</th><th class="n">Total</th></tr></thead><tbody>${linhasCandidatos}</tbody></table></div></div><p style="font-size:10px;text-align:center;margin-top:30px">Painel de Planilhas — Comitê Sérgio Aguiar • Desenvolvido por Álefim Oliveira</p></body></html>`);
     janela.document.close();
   }
 
