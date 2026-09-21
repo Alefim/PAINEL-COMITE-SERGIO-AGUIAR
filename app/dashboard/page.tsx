@@ -386,7 +386,7 @@ export default function Dashboard() {
         </section>
       </>}
 
-      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos.</span><span>Todos os direitos reservados — <strong>Álefim de Oliveira Silva</strong> — Desenvolvedor Full Stack — 2026</span></footer>
+      <footer className="dashboard-footer"><span>Dados atualizados automaticamente a cada 30 segundos.</span><span>Todos os direitos reservados (C) <strong>Álefim Oliveira</strong></span></footer>
     </div>
   </main>;
 }
