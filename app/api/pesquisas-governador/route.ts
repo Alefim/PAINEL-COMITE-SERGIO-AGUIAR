@@ -3,6 +3,21 @@ import { cookies } from "next/headers";
 
 const pesquisasVerificadas = [
   {
+    instituto: "AtlasIntel / Focus Poder",
+    divulgacao: "2026-09-21",
+    campo: "15 a 20/09/2026",
+    ciro: 48,
+    elmano: 48.5,
+    outros: 1.5,
+    brancosNulos: 1.7,
+    indecisos: 0.1,
+    margem: "± 2 p.p.",
+    amostra: 1815,
+    registro: "CE-02298/2026",
+    fonte: "O POVO",
+    url: "https://www.opovo.com.br/noticias/politica/eleicoes/2026/09/21/pesquisa-atlasintel-ceara-traz-elmano-485-e-ciro-gomes-48.html"
+  },
+  {
     instituto: "Datafolha",
     divulgacao: "2026-09-18",
     campo: "14 a 17/09/2026",
