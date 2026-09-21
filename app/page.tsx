@@ -11,6 +11,6 @@ export default function LoginPage() {
       <label>Usuário<input value={usuario} onChange={e=>setUsuario(e.target.value)} autoComplete="username" placeholder="Digite seu usuário" required/></label>
       <label>Senha<input value={senha} onChange={e=>setSenha(e.target.value)} type="password" autoComplete="current-password" placeholder="Digite sua senha" required/></label>
       {erro&&<p className="form-error" role="alert">{erro}</p>}<button className="primary-button" disabled={enviando}>{enviando?"Verificando…":"Entrar no painel"}</button><p className="security-note">🔒 Sessão protegida e acesso exclusivo da administração.</p>
-    </form></section>
+    </form><footer style={{marginTop:"34px",color:"#8b94a3",fontSize:"11px",textAlign:"center"}}>Todos os direitos reservados (C) <strong>Álefim Oliveira</strong></footer></section>
   </main>;
 }
