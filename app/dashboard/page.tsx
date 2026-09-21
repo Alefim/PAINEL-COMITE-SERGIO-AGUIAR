@@ -280,7 +280,7 @@ export default function Dashboard() {
   return <main className="dashboard-shell">
     <header className="topbar">
       <div className="top-brand"><div className="mini-crest">40</div><div className="top-title"><strong>Painel de Planilhas</strong><span>COMITÊ SÉRGIO AGUIAR • 2026</span></div></div>
-      <div className="top-actions"><span className="user-chip">Administrador</span><button className="logout-button" onClick={sair}>Sair ↗</button></div>
+      <div className="top-actions"><a href="/dashboard" style={{textDecoration:"none",fontSize:"11px",fontWeight:900,color:"#fff",background:"#143968",border:"1px solid #143968",borderRadius:"999px",padding:"8px 10px",whiteSpace:"nowrap"}}>Visão territorial</a><a href="/dashboard/pesquisas" style={{textDecoration:"none",fontSize:"11px",fontWeight:900,color:"#143968",background:"#f4f6f8",border:"1px solid #dfe4ea",borderRadius:"999px",padding:"8px 10px",whiteSpace:"nowrap"}}>Pesquisas — Governador</a><span className="user-chip">Administrador</span><button className="logout-button" onClick={sair}>Sair ↗</button></div>
     </header>
 
     <div className="dashboard-main">
