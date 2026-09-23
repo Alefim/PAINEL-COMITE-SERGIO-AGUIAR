@@ -18,6 +18,18 @@ type Pesquisa = {
   url: string;
 };
 
+type PesquisaAguardando = {
+  instituto: string;
+  divulgacaoPrevista: string;
+  campo: string;
+  margem: string;
+  amostra: number;
+  registro: string;
+  status: string;
+  fonte: string;
+  url: string;
+};
+
 type Noticia = {
   titulo: string;
   fonte: string;
@@ -27,6 +39,7 @@ type Noticia = {
 
 type Payload = {
   pesquisas: Pesquisa[];
+  pesquisasAguardando: PesquisaAguardando[];
   noticias: Noticia[];
   monitorOnline: boolean;
   atualizadoEm: string;
@@ -105,6 +118,40 @@ export default function PesquisasGovernador() {
       </section>
 
       {erro ? <div className="error-state">{erro}</div> : <>
+
+        {(data?.pesquisasAguardando || []).length > 0 && <section className="panel" style={{marginBottom:"18px",padding:"20px"}}>
+          <div className="panel-head">
+            <div>
+              <h2>Pesquisa com divulgação prevista</h2>
+              <div className="panel-kicker">Levantamento registrado e concluído, ainda sem percentuais publicados em fonte verificável.</div>
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:"14px",marginTop:"16px"}}>
+            {(data?.pesquisasAguardando || []).map(p => <article key={p.instituto + p.registro} style={{border:"1px solid #e5e8ed",borderRadius:"14px",padding:"16px",background:"#fff"}}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:"12px",alignItems:"start"}}>
+                <div>
+                  <strong style={{fontSize:"17px",color:"#143968"}}>{p.instituto}</strong>
+                  <div style={{fontSize:"11px",color:"#7b8494",marginTop:"4px"}}>Divulgação prevista: {formatarData(p.divulgacaoPrevista)}</div>
+                </div>
+                <span style={{fontSize:"10px",fontWeight:800,color:"#7a5d00",background:"#fff7d6",borderRadius:"999px",padding:"6px 8px"}}>AGUARDANDO</span>
+              </div>
+
+              <div style={{marginTop:"14px",padding:"12px 14px",background:"#f7f8fa",borderRadius:"10px",fontSize:"12px",color:"#394457",fontWeight:800}}>
+                {p.status}
+              </div>
+
+              <div style={{borderTop:"1px solid #eef1f4",marginTop:"14px",paddingTop:"12px",fontSize:"11px",color:"#687487",lineHeight:1.65}}>
+                <div><strong>Campo:</strong> {p.campo}</div>
+                <div><strong>Amostra:</strong> {p.amostra.toLocaleString("pt-BR")} eleitores</div>
+                <div><strong>Margem:</strong> {p.margem}</div>
+                <div><strong>Registro TSE:</strong> {p.registro}</div>
+                <div><strong>Fonte:</strong> <a href={p.url} target="_blank" rel="noreferrer" style={{color:"#143968",fontWeight:800}}>{p.fonte} ↗</a></div>
+              </div>
+            </article>)}
+          </div>
+        </section>}
+
         <section className="panel" style={{marginBottom:"18px",padding:"20px"}}>
           <div className="panel-head">
             <div>
