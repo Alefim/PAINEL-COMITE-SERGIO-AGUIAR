@@ -64,6 +64,20 @@ const pesquisasVerificadas = [
   }
 ];
 
+const pesquisasAguardando = [
+  {
+    instituto: "Quaest",
+    divulgacaoPrevista: "2026-09-23",
+    campo: "19 a 22/09/2026",
+    margem: "± 3 p.p.",
+    amostra: 900,
+    registro: "CE-08268/2026",
+    status: "Aguardando divulgação dos percentuais",
+    fonte: "Quaest",
+    url: "https://quaest.com.br/relatorios/"
+  }
+];
+
 export async function GET() {
   const jar = await cookies();
   const token = process.env.SESSION_TOKEN || "painel-comite-sergio-aguiar-2026";
@@ -101,6 +115,7 @@ export async function GET() {
   return NextResponse.json(
     {
       pesquisas: pesquisasVerificadas,
+      pesquisasAguardando,
       noticias,
       monitorOnline,
       atualizadoEm: new Date().toISOString(),
