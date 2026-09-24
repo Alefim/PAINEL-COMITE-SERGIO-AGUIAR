@@ -3,6 +3,21 @@ import { cookies } from "next/headers";
 
 const pesquisasVerificadas = [
   {
+    instituto: "Quaest",
+    divulgacao: "2026-09-23",
+    campo: "19 a 22/09/2026",
+    ciro: 43,
+    elmano: 41,
+    outros: 2,
+    brancosNulos: 6,
+    indecisos: 8,
+    margem: "± 3 p.p.",
+    amostra: 900,
+    registro: "CE-08268/2026",
+    fonte: "g1 / TV Verdes Mares",
+    url: "https://g1.globo.com/ce/ceara/eleicoes/2026/noticia/2026/09/23/quaest-ce-governador-23-setembro.ghtml"
+  },
+  {
     instituto: "AtlasIntel / Focus Poder",
     divulgacao: "2026-09-21",
     campo: "15 a 20/09/2026",
@@ -64,19 +79,7 @@ const pesquisasVerificadas = [
   }
 ];
 
-const pesquisasAguardando = [
-  {
-    instituto: "Quaest",
-    divulgacaoPrevista: "2026-09-23",
-    campo: "19 a 22/09/2026",
-    margem: "± 3 p.p.",
-    amostra: 900,
-    registro: "CE-08268/2026",
-    status: "Aguardando divulgação dos percentuais",
-    fonte: "Quaest",
-    url: "https://quaest.com.br/relatorios/"
-  }
-];
+const pesquisasAguardando: Array<{ instituto: string; divulgacaoPrevista: string; campo: string; margem: string; amostra: number; registro: string; status: string; fonte: string; url: string }> = [];
 
 export async function GET() {
   const jar = await cookies();
